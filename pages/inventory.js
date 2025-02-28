@@ -28,7 +28,6 @@ export default function InventoryPage() {
         const formData = new FormData();
         formData.append('photo', photo);
         formData.append('email', user.email);
-        formData.append('concession', 'GGP Auto');
 
         const response = await fetch('https://hook.eu2.make.com/ykv6mtd6snp2ypz4g8t4jtqxw3vrujth', {
             method: 'POST',

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
+import Layout from '../components/Layout';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,

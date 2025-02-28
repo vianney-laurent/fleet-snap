@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY // ⚠️ Clé de service à ajouter dans .env.local
+    process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 export default async function handler(req, res) {
@@ -15,9 +15,7 @@ export default async function handler(req, res) {
     const { data, error } = await supabase.auth.admin.createUser({
         email,
         password,
-        user_metadata: {
-            concession
-        }
+        user_metadata: { concession }
     });
 
     if (error) {

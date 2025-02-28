@@ -17,7 +17,7 @@ export default function HistoryPage() {
             setUser(data.user);
 
             if (data?.user) {
-                const response = await fetch(`/api/history?email=${data.user.email}`);
+                const response = await fetch(`/api/history`);
                 const data = await response.json();
                 setRecords(data);
             }

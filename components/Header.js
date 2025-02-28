@@ -17,45 +17,48 @@ export default function Header() {
     };
 
     return (
-        <header className="flex justify-between items-center p-4 bg-blue-500 text-white">
-            <img
-                src="/logo.png"
-                alt="Fleet Snap"
-                className="h-10 cursor-pointer"
-                onClick={() => router.push('/inventory')}
-            />
-            <div className="relative">
-                <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden">
-                    ☰
-                </button>
-                {menuOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white shadow-lg rounded-md text-black">
-                        <button
-                            onClick={() => router.push('/history')}
-                            className="block w-full text-left p-2 hover:bg-gray-200"
-                        >
-                            Historique
-                        </button>
-                        <button
-                            onClick={() => router.push('/profile')}
-                            className="block w-full text-left p-2 hover:bg-gray-200"
-                        >
-                            Profil
-                        </button>
-                        <button
-                            onClick={handleLogout}
-                            className="block w-full text-left p-2 text-red-600 hover:bg-gray-200"
-                        >
-                            Déconnexion
-                        </button>
-                    </div>
-                )}
+        <header className="w-full bg-white shadow-md">
+            {/* Logo qui prend la largeur max avec hauteur adaptée */}
+
+
+            {/* Menu navigation */}
+            <div className="flex justify-between items-center p-4">
+
+                {/* Menu burger pour mobile */}
+                <div className="md:hidden">
+                    <button onClick={() => setMenuOpen(!menuOpen)} className="text-gray-700">
+                        ☰
+                    </button>
+                </div>
+
+                {/* Menu Desktop */}
+                <nav className="hidden md:flex space-x-6">
+                    <button onClick={() => router.push('/history')} className="text-gray-700 hover:text-blue-600">
+                        Historique
+                    </button>
+                    <button onClick={() => router.push('/profile')} className="text-gray-700 hover:text-blue-600">
+                        Profil
+                    </button>
+                    <button onClick={handleLogout} className="text-red-600 hover:text-red-800">
+                        Déconnexion
+                    </button>
+                </nav>
             </div>
-            <nav className="hidden md:flex space-x-4">
-                <button onClick={() => router.push('/history')} className="hover:underline">Historique</button>
-                <button onClick={() => router.push('/profile')} className="hover:underline">Profil</button>
-                <button onClick={handleLogout} className="text-red-600 hover:underline">Déconnexion</button>
-            </nav>
+
+            {/* Menu déroulant mobile */}
+            {menuOpen && (
+                <div className="md:hidden bg-white shadow-md absolute top-[80px] right-0 w-48 z-50">
+                    <button onClick={() => router.push('/history')} className="block w-full text-left p-2 hover:bg-gray-100">
+                        Historique
+                    </button>
+                    <button onClick={() => router.push('/profile')} className="block w-full text-left p-2 hover:bg-gray-100">
+                        Profil
+                    </button>
+                    <button onClick={handleLogout} className="block w-full text-left p-2 text-red-600 hover:bg-gray-100">
+                        Déconnexion
+                    </button>
+                </div>
+            )}
         </header>
     );
 }

@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
-import Header from '../components/Header';
+import Layout from '../components/Layout';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-export default function ProfilePage() {
+export default function Profile() {
     const [user, setUser] = useState(null);
     const [name, setName] = useState('');
     const [concession, setConcession] = useState('');
@@ -59,27 +59,52 @@ export default function ProfilePage() {
     }
 
     return (
-        <div>
-            <Header />
+        <Layout>
             <div className="p-6">
                 <h1 className="text-xl font-bold mb-4">Profil utilisateur</h1>
                 <div className="space-y-4">
                     <div>
-                        <label>Nom</label>
-                        <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="border p-2 w-full" />
+                        <label className="block font-medium mb-1">Nom</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            className="border p-2 w-full"
+                        />
                     </div>
                     <div>
-                        <label>Concession</label>
-                        <input type="text" value={concession} onChange={(e) => setConcession(e.target.value)} className="border p-2 w-full" />
+                        <label className="block font-medium mb-1">Concession</label>
+                        <input
+                            type="text"
+                            value={concession}
+                            onChange={(e) => setConcession(e.target.value)}
+                            className="border p-2 w-full"
+                        />
                     </div>
-                    <button onClick={updateProfile} className="bg-blue-500 text-white p-2 w-full">Mettre à jour le profil</button>
-                    <div>
-                        <label>Nouveau mot de passe</label>
-                        <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="border p-2 w-full" />
+                    <button
+                        onClick={updateProfile}
+                        className="bg-blue-500 text-white p-2 w-full"
+                    >
+                        Mettre à jour le profil
+                    </button>
+
+                    <div className="mt-6">
+                        <label className="block font-medium mb-1">Nouveau mot de passe</label>
+                        <input
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            className="border p-2 w-full"
+                        />
                     </div>
-                    <button onClick={updatePassword} className="bg-blue-500 text-white p-2 w-full">Changer le mot de passe</button>
+                    <button
+                        onClick={updatePassword}
+                        className="bg-blue-500 text-white p-2 w-full"
+                    >
+                        Changer le mot de passe
+                    </button>
                 </div>
             </div>
-        </div>
+        </Layout>
     );
 }

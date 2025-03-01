@@ -1,3 +1,15 @@
+
+import Layout from '../components/Layout';
+
+export default function Admin() {
+    return (
+        <Layout>
+
+import Layout from '../components/Layout';
+
+export default function Page() {
+    return (
+        <Layout>
 import { useState } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import Header from '../components/Header';
@@ -94,5 +106,12 @@ export default function AdminPage() {
                 </div>
             </div>
         </div>
+    );
+}
+        </Layout>
+    );
+}
+
+        </Layout>
     );
 }

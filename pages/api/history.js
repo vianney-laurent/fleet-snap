@@ -1,7 +1,7 @@
 export default async function handler(req, res) {
     const { email } = req.query;
 
-    const url = "https://api.airtable.com/v0/appJc8wEVopX9HoCj/Inventaire%202024?maxRecords=3&view=Vue%20globale";
+    const url = "https://api.airtable.com/v0/appJc8wEVopX9HoCj/Inventaire%202024?maxRecords=10&view=Vue%20globale";
 // ?filterByFormula=({Collaborateur}='${email}') // filter by collaborator
     const response = await fetch(url, {
         headers: {

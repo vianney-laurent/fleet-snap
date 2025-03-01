@@ -1,64 +1,52 @@
+
 import { useState } from 'react';
 import { useRouter } from 'next/router';
-import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-);
-
-export default function Header() {
+export default function Header({ userInitials = 'VL' }) {
     const [menuOpen, setMenuOpen] = useState(false);
     const router = useRouter();
 
-    const handleLogout = async () => {
-        await supabase.auth.signOut();
-        router.push('/');
+    const handleNavigation = (path) => {
+        setMenuOpen(false);
+        router.push(path);
     };
 
     return (
-        <header className="w-full bg-white shadow-md">
-            {/* Logo qui prend la largeur max avec hauteur adaptée */}
-
-
-            {/* Menu navigation */}
-            <div className="flex justify-between items-center p-4">
-
-                {/* Menu burger pour mobile */}
-                <div className="md:hidden">
-                    <button onClick={() => setMenuOpen(!menuOpen)} className="text-gray-700">
-                        ☰
-                    </button>
-                </div>
-
-                {/* Menu Desktop */}
-                <nav className="hidden md:flex space-x-6">
-                    <button onClick={() => router.push('/history')} className="text-gray-700 hover:text-blue-600">
-                        Historique
-                    </button>
-                    <button onClick={() => router.push('/profile')} className="text-gray-700 hover:text-blue-600">
-                        Profil
-                    </button>
-                    <button onClick={handleLogout} className="text-red-600 hover:text-red-800">
-                        Déconnexion
-                    </button>
-                </nav>
+        <div className="flex justify-between items-center p-4 bg-white border-b shadow-sm relative z-50">
+            {/* Logo qui redirige vers /inventory */}
+            <div className="flex items-center cursor-pointer" onClick={() => handleNavigation('/inventory')}>
+                <img src="/logo.png" alt="Logo" className="h-8 mr-2" />
+                <span className="font-bold text-lg text-gray-800">AUTO</span>
             </div>
 
-            {/* Menu déroulant mobile */}
-            {menuOpen && (
-                <div className="md:hidden bg-white shadow-md absolute top-[80px] right-0 w-48 z-50">
-                    <button onClick={() => router.push('/history')} className="block w-full text-left p-2 hover:bg-gray-100">
-                        Historique
-                    </button>
-                    <button onClick={() => router.push('/profile')} className="block w-full text-left p-2 hover:bg-gray-100">
-                        Profil
-                    </button>
-                    <button onClick={handleLogout} className="block w-full text-left p-2 text-red-600 hover:bg-gray-100">
-                        Déconnexion
-                    </button>
-                </div>
-            )}
-        </header>
+            {/* Bouton profil (menu burger-like) */}
+            <div className="relative">
+                <button
+                    className="w-10 h-10 bg-gray-200 text-gray-700 flex items-center justify-center rounded-full font-bold"
+                    onClick={() => setMenuOpen(!menuOpen)}
+                >
+                    {userInitials}
+                </button>
+
+                {menuOpen && (
+                    <div className="absolute right-0 mt-2 w-48 bg-white border rounded-md shadow-lg">
+                        <ul className="py-2 text-sm text-gray-700">
+                            <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                                onClick={() => handleNavigation('/profile')}>
+                                👤 Mon profil
+                            </li>
+                            <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                                onClick={() => handleNavigation('/history')}>
+                                🔍 Mon inventaire
+                            </li>
+                            <li className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                                onClick={() => handleNavigation('/')}>
+                                ⏻ Déconnexion
+                            </li>
+                        </ul>
+                    </div>
+                )}
+            </div>
+        </div>
     );
 }

@@ -4,6 +4,7 @@ import Layout from '../components/Layout';
 export default function Admin() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [name, setName] = useState('');           // Champ ajouté
     const [concession, setConcession] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -15,7 +16,12 @@ export default function Admin() {
         const response = await fetch('/api/createUser', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, concession })
+            body: JSON.stringify({
+                email,
+                password,
+                name,            // On envoie le nom complet
+                concession
+            })
         });
 
         const result = await response.json();
@@ -24,6 +30,7 @@ export default function Admin() {
             setSuccessMessage(`Utilisateur ${email} créé avec succès !`);
             setEmail('');
             setPassword('');
+            setName('');        // On reset aussi le nom
             setConcession('');
         } else {
             setErrorMessage(result.error || 'Erreur inconnue');
@@ -64,6 +71,16 @@ export default function Admin() {
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
+                            className="w-full p-2 border rounded"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block font-medium">Nom complet</label>
+                        <input
+                            type="text"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
                             className="w-full p-2 border rounded"
                         />
                     </div>

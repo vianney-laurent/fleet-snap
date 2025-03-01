@@ -35,8 +35,9 @@ export default function Inventory() {
 
         const formData = new FormData();
         formData.append('photo', photo);
-        formData.append('email', user.email);
-        formData.append('concession', user.user_metadata?.concession || 'Non renseignée');
+        formData.append('email', data.user.email);
+        formData.append('name', data.user.user_metadata.name);
+        formData.append('concession', data.user.user_metadata.concession);
 
         const response = await fetch('https://hook.eu2.make.com/ykv6mtd6snp2ypz4g8t4jtqxw3vrujth', {
             method: 'POST',

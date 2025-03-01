@@ -42,7 +42,6 @@ export default function History() {
                 setRecords(records || []);
             } catch (err) {
                 setError('Impossible de récupérer les données.');
-                console.error(err);
             } finally {
                 setLoading(false);
             }
@@ -71,12 +70,9 @@ export default function History() {
         });
 
         if (response.ok) {
-            const updatedRecords = records.map((record) =>
-                record.id === editingRecord.id
-                    ? { ...record, fields: { ...record.fields, 'Plaque / VIN': newPlateVin } }
-                    : record
-            );
-            setRecords(updatedRecords);
+            setRecords(records.map((r) =>
+                r.id === editingRecord.id ? { ...r, fields: { ...r.fields, 'Plaque / VIN': newPlateVin } } : r
+            ));
             handleCloseModal();
         } else {
             alert('Erreur lors de la mise à jour');
@@ -96,7 +92,7 @@ export default function History() {
         });
 
         if (response.ok) {
-            setRecords(records.filter(record => record.id !== recordToDelete.id));
+            setRecords(records.filter(r => r.id !== recordToDelete.id));
             setShowDeleteModal(false);
             setRecordToDelete(null);
         } else {
@@ -118,11 +114,7 @@ export default function History() {
     };
 
     if (loading) {
-        return (
-            <Layout>
-                <div className="p-6">Chargement...</div>
-            </Layout>
-        );
+        return <Layout><div className="p-6">Chargement...</div></Layout>;
     }
 
     return (
@@ -132,66 +124,57 @@ export default function History() {
 
                 {error && <p className="text-red-500">{error}</p>}
 
-                {records.length === 0 ? (
-                    <p>Aucun inventaire trouvé</p>
-                ) : (
-                    records.map((record) => {
-                        const photoUrl = record.fields['Photo']?.[0]?.url;
+                {records.map((record) => (
+                    <div key={record.id} className="flex items-center space-x-4 bg-white shadow rounded-lg p-3 border border-gray-200">
+                        <img
+                            src={record.fields['Photo']?.[0]?.url || ''}
+                            alt="Photo véhicule"
+                            className="w-16 h-16 object-cover rounded cursor-pointer"
+                            onClick={() => handlePhotoClick(record.fields['Photo']?.[0]?.url)}
+                        />
+                        <div className="flex-1">
+                            <p className="font-bold">{record.fields['Plaque / VIN']}</p>
+                            <p className="text-sm text-gray-500">{record.fields['Date']}</p>
+                            <p className="text-sm">{record.fields['Collaborateur']}</p>
+                        </div>
+                        <div className="flex flex-col space-y-2">
+                            <button onClick={() => handleEditClick(record)}>
+                                ✏️
+                            </button>
+                            <button onClick={() => handleDeleteClick(record)}>
+                                🗑️
+                            </button>
+                        </div>
+                    </div>
+                ))}
 
-                        return (
-                            <div
-                                key={record.id}
-                                className="flex items-center space-x-4 bg-white shadow rounded-lg p-3 border border-gray-200"
-                            >
-                                {photoUrl ? (
-                                    <img
-                                        src={photoUrl}
-                                        alt="Photo véhicule"
-                                        className="w-16 h-16 object-cover rounded cursor-pointer"
-                                        onClick={() => handlePhotoClick(photoUrl)}
-                                    />
-                                ) : (
-                                    <div className="w-16 h-16 flex items-center justify-center bg-gray-200 rounded">
-                                        ❓
-                                    </div>
-                                )}
-
-                                <div className="flex-1 min-w-0">
-                                    <p className="font-bold truncate">{record.fields['Plaque / VIN']}</p>
-                                    <p className="text-sm text-gray-500">{record.fields['Date']}</p>
-                                    <p className="text-sm">{record.fields['Collaborateur']}</p>
-                                </div>
-
-                                <div className="flex flex-col space-y-2 items-center">
-                                    <button onClick={() => handleEditClick(record)}>
-                                        ✏️
-                                    </button>
-                                    <button onClick={() => handleDeleteClick(record)}>
-                                        🗑️
-                                    </button>
-                                </div>
+                {/* Modal de modification */}
+                {showModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center transition-opacity animate-fadeIn z-50">
+                        <div className="bg-white p-6 rounded-lg">
+                            <h2 className="text-xl font-bold">Modifier la plaque / VIN</h2>
+                            <input
+                                className="border p-2 w-full mt-4"
+                                value={newPlateVin}
+                                onChange={(e) => setNewPlateVin(e.target.value)}
+                            />
+                            <div className="mt-4 flex space-x-2">
+                                <button onClick={handleCloseModal} className="px-4 py-2 bg-gray-300 rounded">Annuler</button>
+                                <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded">Enregistrer</button>
                             </div>
-                        );
-                    })
+                        </div>
+                    </div>
                 )}
 
-                {enlargedPhoto && (
-                    <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50">
-                        <div className="relative bg-white rounded-lg overflow-hidden">
-                            <button
-                                onClick={handleClosePhotoModal}
-                                className="absolute top-2 right-2 bg-gray-700 text-white rounded-full p-1"
-                            >
-                                ✕
-                            </button>
-                            <img src={enlargedPhoto} alt="Photo en grand" className="max-w-full max-h-screen object-contain" />
-                            <div className="p-2 text-center">
-                                <button
-                                    onClick={handleClosePhotoModal}
-                                    className="mt-2 bg-gray-500 text-white px-4 py-2 rounded"
-                                >
-                                    Fermer
-                                </button>
+                {/* Modal de suppression */}
+                {showDeleteModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center transition-opacity animate-fadeIn z-50">
+                        <div className="bg-white p-6 rounded-lg">
+                            <h2 className="text-xl font-bold">Confirmer la suppression</h2>
+                            <p>Voulez-vous vraiment supprimer cet enregistrement ?</p>
+                            <div className="mt-4 flex space-x-2">
+                                <button onClick={handleCloseDeleteModal} className="px-4 py-2 bg-gray-300 rounded">Annuler</button>
+                                <button onClick={handleDeleteConfirm} className="px-4 py-2 bg-red-600 text-white rounded">Supprimer</button>
                             </div>
                         </div>
                     </div>

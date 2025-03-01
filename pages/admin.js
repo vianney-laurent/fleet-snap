@@ -1,25 +1,7 @@
-
+import { useState } from 'react';
 import Layout from '../components/Layout';
 
 export default function Admin() {
-    return (
-        <Layout>
-
-import Layout from '../components/Layout';
-
-export default function Page() {
-    return (
-        <Layout>
-import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-import Header from '../components/Header';
-
-const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY // Clé de service à mettre dans .env.local
-);
-
-export default function AdminPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [concession, setConcession] = useState('');
@@ -49,8 +31,7 @@ export default function AdminPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100">
-            <Header />
+        <Layout>
             <div className="p-6 max-w-lg mx-auto">
                 <h1 className="text-2xl font-bold mb-4">Créer un utilisateur</h1>
 
@@ -105,13 +86,6 @@ export default function AdminPage() {
                     </button>
                 </div>
             </div>
-        </div>
-    );
-}
-        </Layout>
-    );
-}
-
         </Layout>
     );
 }

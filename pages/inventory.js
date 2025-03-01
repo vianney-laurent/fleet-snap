@@ -31,13 +31,19 @@ export default function Inventory() {
             alert('Veuillez ajouter une photo.');
             return;
         }
+
+        if (!user) {
+            alert('Utilisateur non chargé, veuillez vous reconnecter.');
+            return;
+        }
+
         setLoading(true);
 
         const formData = new FormData();
         formData.append('photo', photo);
-        formData.append('email', data.user.email);
-        formData.append('name', data.user.user_metadata.name);
-        formData.append('concession', data.user.user_metadata.concession);
+        formData.append('email', user.email);
+        formData.append('name', user.user_metadata?.name || 'Nom inconnu');
+        formData.append('concession', user.user_metadata?.concession || 'Concession inconnue');
 
         const response = await fetch('https://hook.eu2.make.com/ykv6mtd6snp2ypz4g8t4jtqxw3vrujth', {
             method: 'POST',
@@ -58,7 +64,6 @@ export default function Inventory() {
         <Layout>
             <div className="flex flex-col items-center min-h-screen bg-gray-100 py-4">
 
-                {/* En-tête avec logo responsive */}
                 <div className="w-full max-w-md mt-4">
                     <img
                         src="/logo.png"
@@ -67,7 +72,6 @@ export default function Inventory() {
                     />
                 </div>
 
-                {/* Carte contenant le formulaire */}
                 <div className="bg-white shadow-lg rounded-lg p-6 mt-4 w-full max-w-md">
                     <h1 className="text-xl font-bold mb-2">Inventaire voitures</h1>
                     <p className="text-gray-600 text-sm mb-2">
@@ -77,7 +81,6 @@ export default function Inventory() {
                         Attention à limiter les reflets pour le traitement automatique de la photo.
                     </p>
 
-                    {/* Upload photo */}
                     <label className="block text-sm font-medium mb-2">Photo *</label>
                     <div className="border border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center text-gray-500 cursor-pointer">
                         <input
@@ -99,7 +102,6 @@ export default function Inventory() {
                         </label>
                     </div>
 
-                    {/* Bouton envoyer */}
                     <button
                         onClick={handleSubmit}
                         disabled={loading}

@@ -12,19 +12,17 @@ export default function Profile() {
     const [user, setUser] = useState(null);
     const [name, setName] = useState('');
     const [concession, setConcession] = useState('');
-    const [newPassword, setNewPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState('');
     const router = useRouter();
 
     useEffect(() => {
         async function fetchUser() {
-            const { data: userData } = await supabase.auth.getUser();
-            if (userData?.user) {
-                setUser(userData.user);
-                const { data } = await supabase.from('users').select('*').eq('email', userData.user.email).single();
-                if (data) {
-                    setName(data.name);
-                    setConcession(data.concession);
-                }
+            const { data } = await supabase.auth.getUser();
+            if (data?.user) {
+                setUser(data.user);
+                setName(data.user.user_metadata?.name || '');
+                setConcession(data.user.user_metadata?.concession || '');
             } else {
                 router.push('/');
             }
@@ -33,75 +31,73 @@ export default function Profile() {
     }, []);
 
     async function updateProfile() {
-        const response = await fetch('/api/updateProfile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: user.email, name, concession })
-        });
-        if (response.ok) {
-            alert('Profil mis à jour !');
-        } else {
-            alert('Erreur lors de la mise à jour');
-        }
-    }
+        setLoading(true);
+        setMessage('');
 
-    async function updatePassword() {
-        const response = await fetch('/api/updatePassword', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email: user.email, newPassword })
+        const { error } = await supabase.auth.updateUser({
+            data: {
+                name,
+                concession
+            }
         });
-        if (response.ok) {
-            alert('Mot de passe mis à jour');
+
+        if (error) {
+            setMessage('Erreur lors de la mise à jour du profil : ' + error.message);
         } else {
-            alert('Erreur lors du changement de mot de passe');
+            setMessage('Profil mis à jour avec succès !');
         }
+
+        setLoading(false);
     }
 
     return (
         <Layout>
-            <div className="p-6">
-                <h1 className="text-xl font-bold mb-4">Profil utilisateur</h1>
+            <div className="p-6 max-w-lg mx-auto">
+                <h1 className="text-2xl font-bold mb-4">Profil utilisateur</h1>
+
+                {message && (
+                    <div className={`p-2 mb-4 rounded ${message.includes('Erreur') ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+                        {message}
+                    </div>
+                )}
+
                 <div className="space-y-4">
                     <div>
-                        <label className="block font-medium mb-1">Nom</label>
+                        <label className="block text-sm font-medium">Email</label>
+                        <input
+                            type="text"
+                            value={user?.email}
+                            disabled
+                            className="w-full p-2 border rounded bg-gray-100"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block text-sm font-medium">Nom complet</label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            className="border p-2 w-full"
+                            className="w-full p-2 border rounded"
                         />
                     </div>
+
                     <div>
-                        <label className="block font-medium mb-1">Concession</label>
+                        <label className="block text-sm font-medium">Concession</label>
                         <input
                             type="text"
                             value={concession}
                             onChange={(e) => setConcession(e.target.value)}
-                            className="border p-2 w-full"
+                            className="w-full p-2 border rounded"
                         />
                     </div>
+
                     <button
                         onClick={updateProfile}
-                        className="bg-blue-500 text-white p-2 w-full"
+                        disabled={loading}
+                        className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
                     >
-                        Mettre à jour le profil
-                    </button>
-
-                    <div className="mt-6">
-                        <label className="block font-medium mb-1">Nouveau mot de passe</label>
-                        <input
-                            type="password"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                            className="border p-2 w-full"
-                        />
-                    </div>
-                    <button
-                        onClick={updatePassword}
-                        className="bg-blue-500 text-white p-2 w-full"
-                    >
-                        Changer le mot de passe
+                        {loading ? 'Mise à jour...' : 'Mettre à jour le profil'}
                     </button>
                 </div>
             </div>

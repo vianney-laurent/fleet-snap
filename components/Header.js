@@ -16,7 +16,7 @@ export default function Header({ userInitials = 'VL' }) {
             {/* Logo qui redirige vers /inventory */}
             <div className="flex items-center cursor-pointer" onClick={() => handleNavigation('/inventory')}>
                 <img src="/logo.png" alt="Logo" className="h-8 mr-2" />
-                <span className="font-bold text-lg text-gray-800">AUTO</span>
+                <span className="font-bold text-lg text-gray-800"></span>
             </div>
 
             {/* Bouton profil (menu burger-like) */}

@@ -91,9 +91,7 @@ export default function Inventory() {
                             onChange={(e) => setPhoto(e.target.files[0])}
                         />
                         <label htmlFor="photoInput" className="flex flex-col items-center cursor-pointer">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v16c0 1.104.896 2 2 2h12a2 2 0 002-2V4m-8 4l4-4m-4 4l-4-4m4 4V16" />
-                            </svg>
+                            <span className="text-5xl mb-2">📸</span>
                             {photo ? (
                                 <span className="text-sm">{photo.name}</span>
                             ) : (

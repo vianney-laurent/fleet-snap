@@ -18,6 +18,7 @@ export default function History() {
     const [showModal, setShowModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [recordToDelete, setRecordToDelete] = useState(null);
+    const [enlargedPhoto, setEnlargedPhoto] = useState(null); // Pour afficher la photo en grand
 
     const router = useRouter();
 
@@ -108,6 +109,14 @@ export default function History() {
         setRecordToDelete(null);
     };
 
+    const handlePhotoClick = (photoUrl) => {
+        setEnlargedPhoto(photoUrl);
+    };
+
+    const handleClosePhotoModal = () => {
+        setEnlargedPhoto(null);
+    };
+
     if (loading) {
         return (
             <Layout>
@@ -127,73 +136,76 @@ export default function History() {
                     <p>Aucun inventaire trouvé</p>
                 ) : (
                     <div className="space-y-4">
-                        {records.map((record) => (
-                            <div
-                                key={record.id}
-                                className="p-4 bg-white shadow rounded-lg flex justify-between items-center"
-                            >
-                                <div>
-                                    <p className="font-bold">{record.fields['Plaque / VIN']}</p>
-                                    <p className="text-sm text-gray-500">{record.fields['Date']}</p>
-                                    <p className="text-sm">{record.fields['Collaborateur']}</p>
+                        {records.map((record) => {
+                            const photoUrl = record.fields['Photo']?.[0]?.url;
+
+                            return (
+                                <div
+                                    key={record.id}
+                                    className="p-4 bg-white shadow rounded-lg flex items-center space-x-4"
+                                >
+                                    {/* Miniature cliquable */}
+                                    {photoUrl ? (
+                                        <img
+                                            src={photoUrl}
+                                            alt="Photo véhicule"
+                                            className="w-16 h-16 object-cover rounded cursor-pointer"
+                                            onClick={() => handlePhotoClick(photoUrl)}
+                                        />
+                                    ) : (
+                                        <div className="w-16 h-16 bg-gray-200 flex items-center justify-center text-gray-500">
+                                            ❓
+                                        </div>
+                                    )}
+
+                                    {/* Infos */}
+                                    <div className="flex-1">
+                                        <p className="font-bold">{record.fields['Plaque / VIN']}</p>
+                                        <p className="text-sm text-gray-500">{record.fields['Date']}</p>
+                                        <p className="text-sm">{record.fields['Collaborateur']}</p>
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={() => handleEditClick(record)}
+                                            className="text-gray-500 hover:text-gray-700"
+                                            aria-label="Modifier"
+                                        >
+                                            ✏️
+                                        </button>
+                                        <button
+                                            onClick={() => handleDeleteClick(record)}
+                                            className="text-red-500 hover:text-red-700"
+                                            aria-label="Supprimer"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex items-center gap-3">
-                                    <button
-                                        onClick={() => handleEditClick(record)}
-                                        className="text-gray-500 hover:text-gray-700"
-                                        aria-label="Modifier"
-                                    >
-                                        ✏️
-                                    </button>
-                                    <button
-                                        onClick={() => handleDeleteClick(record)}
-                                        className="text-red-500 hover:text-red-700"
-                                        aria-label="Supprimer"
-                                    >
-                                        🗑️
-                                    </button>
-                                </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 )}
             </div>
 
-            {/* Modal pour modifier */}
-            {showModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <h2 className="text-xl font-bold mb-4">Modifier la plaque ou le VIN</h2>
-                        <input
-                            type="text"
-                            value={newPlateVin}
-                            onChange={(e) => setNewPlateVin(e.target.value)}
-                            className="w-full border p-2 rounded mb-4"
-                        />
-                        <div className="flex justify-end space-x-2">
-                            <button className="bg-gray-300 px-4 py-2 rounded" onClick={handleCloseModal}>
-                                Annuler
-                            </button>
-                            <button className="bg-blue-600 text-white px-4 py-2 rounded" onClick={handleSave}>
-                                Enregistrer
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Modal pour confirmer la suppression */}
-            {showDeleteModal && (
-                <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
-                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-                        <h2 className="text-xl font-bold mb-4">Confirmer la suppression</h2>
-                        <p>Voulez-vous vraiment supprimer cet enregistrement ?</p>
-                        <div className="flex justify-end space-x-2 mt-4">
-                            <button className="bg-gray-300 px-4 py-2 rounded" onClick={handleCloseDeleteModal}>
-                                Annuler
-                            </button>
-                            <button className="bg-red-600 text-white px-4 py-2 rounded" onClick={handleDeleteConfirm}>
-                                Supprimer
+            {/* Modal pour afficher la photo en grand */}
+            {enlargedPhoto && (
+                <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50">
+                    <div className="relative bg-white rounded-lg overflow-hidden">
+                        <button
+                            onClick={handleClosePhotoModal}
+                            className="absolute top-2 right-2 bg-gray-700 text-white rounded-full p-1"
+                        >
+                            ✕
+                        </button>
+                        <img src={enlargedPhoto} alt="Photo en grand" className="max-w-full max-h-screen object-contain" />
+                        <div className="p-2 text-center">
+                            <button
+                                onClick={handleClosePhotoModal}
+                                className="mt-2 bg-gray-500 text-white px-4 py-2 rounded"
+                            >
+                                Fermer
                             </button>
                         </div>
                     </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
@@ -17,8 +17,10 @@ export default function Profile() {
     const [newPassword, setNewPassword] = useState('');
     const [showEmailTooltip, setShowEmailTooltip] = useState(false);
     const [showNameTooltip, setShowNameTooltip] = useState(false);
-
     const router = useRouter();
+
+    const emailTooltipRef = useRef(null);
+    const nameTooltipRef = useRef(null);
 
     useEffect(() => {
         async function fetchUser() {
@@ -47,6 +49,22 @@ export default function Profile() {
             authListener.subscription.unsubscribe();
         };
     }, [router]);
+
+    // Fermer les tooltips si on clique en dehors
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (
+                emailTooltipRef.current && !emailTooltipRef.current.contains(event.target) &&
+                nameTooltipRef.current && !nameTooltipRef.current.contains(event.target)
+            ) {
+                setShowEmailTooltip(false);
+                setShowNameTooltip(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     async function updateProfile() {
         const response = await fetch('/api/updateProfile', {
@@ -84,9 +102,9 @@ export default function Profile() {
         }
     }
 
-    const Tooltip = ({ text, show }) => (
+    const Tooltip = ({ text, show, tooltipRef }) => (
         show && (
-            <div className="absolute left-6 top-6 mt-1 bg-gray-800 text-white text-xs rounded p-2 shadow-lg z-50">
+            <div ref={tooltipRef} className="absolute left-6 top-6 mt-1 bg-gray-800 text-white text-xs rounded p-2 shadow-lg z-50 max-w-xs">
                 {text}
             </div>
         )
@@ -109,8 +127,6 @@ export default function Profile() {
                         />
                         <div
                             className="cursor-pointer text-gray-500"
-                            onMouseEnter={() => setShowEmailTooltip(true)}
-                            onMouseLeave={() => setShowEmailTooltip(false)}
                             onClick={() => setShowEmailTooltip(!showEmailTooltip)}
                         >
                             ⓘ
@@ -119,6 +135,7 @@ export default function Profile() {
                     <Tooltip
                         text="L'email ne peut pas être modifié. Contactez le support pour toute demande."
                         show={showEmailTooltip}
+                        tooltipRef={emailTooltipRef}
                     />
                 </div>
 
@@ -134,8 +151,6 @@ export default function Profile() {
                         />
                         <div
                             className="cursor-pointer text-gray-500"
-                            onMouseEnter={() => setShowNameTooltip(true)}
-                            onMouseLeave={() => setShowNameTooltip(false)}
                             onClick={() => setShowNameTooltip(!showNameTooltip)}
                         >
                             ⓘ
@@ -144,6 +159,7 @@ export default function Profile() {
                     <Tooltip
                         text="Le nom complet ne peut pas être modifié. Contactez le support pour toute demande."
                         show={showNameTooltip}
+                        tooltipRef={nameTooltipRef}
                     />
                 </div>
 
@@ -164,7 +180,6 @@ export default function Profile() {
                     </select>
                 </div>
 
-                {/* Mettre à jour le profil */}
                 <button
                     onClick={updateProfile}
                     className="bg-blue-500 text-white p-2 w-full rounded"

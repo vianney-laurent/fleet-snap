@@ -11,10 +11,13 @@ const supabase = createClient(
 
 export default function Profile() {
     const [user, setUser] = useState(null);
-    const [email, setEmail] = useState(''); // Champ email en lecture seule
+    const [email, setEmail] = useState('');
     const [name, setName] = useState('');
     const [concession, setConcession] = useState('');
     const [newPassword, setNewPassword] = useState('');
+    const [showEmailTooltip, setShowEmailTooltip] = useState(false);
+    const [showNameTooltip, setShowNameTooltip] = useState(false);
+
     const router = useRouter();
 
     useEffect(() => {
@@ -22,40 +25,44 @@ export default function Profile() {
             const { data: userData, error } = await supabase.auth.getUser();
 
             if (error || !userData?.user) {
-                router.push('/?reason=session-expired');  // Redirige avec message
+                router.push('/?reason=session-expired');
                 return;
             }
 
             setUser(userData.user);
-            setEmail(userData.user.email);  // Récupère l'email
+            setEmail(userData.user.email);
             setName(userData.user.user_metadata?.name || '');
             setConcession(userData.user.user_metadata?.concession || '');
         }
 
         fetchUser();
 
-        // Écoute les changements d'état d'auth (ex : déconnexion ou expiration de session)
         const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
             if (!session) {
                 router.push('/?reason=session-expired');
             }
         });
 
-        // Nettoyage de l'écouteur lors du démontage
         return () => {
             authListener.subscription.unsubscribe();
         };
     }, [router]);
 
     async function updateProfile() {
-        const { error } = await supabase.auth.updateUser({
-            data: { name, concession }
+        const response = await fetch('/api/updateProfile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, name, concession })
         });
 
-        if (error) {
-            alert(`Erreur lors de la mise à jour du profil : ${error.message}`);
-        } else {
+        if (response.ok) {
             alert('Profil mis à jour !');
+            localStorage.setItem('userName', name);
+            localStorage.setItem('userConcession', concession);
+            window.location.reload();
+        } else {
+            const errorData = await response.json();
+            alert(`Erreur : ${errorData.error || 'Impossible de mettre à jour le profil'}`);
         }
     }
 
@@ -77,32 +84,70 @@ export default function Profile() {
         }
     }
 
+    const Tooltip = ({ text, show }) => (
+        show && (
+            <div className="absolute left-6 top-6 mt-1 bg-gray-800 text-white text-xs rounded p-2 shadow-lg z-50">
+                {text}
+            </div>
+        )
+    );
+
     return (
         <Layout>
             <div className="p-6 space-y-6">
                 <h1 className="text-xl font-bold">Profil utilisateur</h1>
 
-                {/* Email en lecture seule */}
-                <div>
+                {/* Email en lecture seule avec tooltip */}
+                <div className="relative">
                     <label className="block text-sm font-medium">Email</label>
-                    <input
-                        type="email"
-                        value={email}
-                        readOnly
-                        className="border p-2 w-full rounded bg-gray-100 cursor-not-allowed"
+                    <div className="flex items-center space-x-2">
+                        <input
+                            type="email"
+                            value={email}
+                            readOnly
+                            className="border p-2 w-full rounded bg-gray-100 cursor-not-allowed"
+                        />
+                        <div
+                            className="cursor-pointer text-gray-500"
+                            onMouseEnter={() => setShowEmailTooltip(true)}
+                            onMouseLeave={() => setShowEmailTooltip(false)}
+                            onClick={() => setShowEmailTooltip(!showEmailTooltip)}
+                        >
+                            ⓘ
+                        </div>
+                    </div>
+                    <Tooltip
+                        text="L'email ne peut pas être modifié. Contactez le support pour toute demande."
+                        show={showEmailTooltip}
                     />
                 </div>
 
-                <div>
-                    <label className="block text-sm font-medium">Nom</label>
-                    <input
-                        type="text"
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="border p-2 w-full rounded"
+                {/* Nom complet en lecture seule avec tooltip */}
+                <div className="relative">
+                    <label className="block text-sm font-medium">Nom complet</label>
+                    <div className="flex items-center space-x-2">
+                        <input
+                            type="text"
+                            value={name}
+                            readOnly
+                            className="border p-2 w-full rounded bg-gray-100 cursor-not-allowed"
+                        />
+                        <div
+                            className="cursor-pointer text-gray-500"
+                            onMouseEnter={() => setShowNameTooltip(true)}
+                            onMouseLeave={() => setShowNameTooltip(false)}
+                            onClick={() => setShowNameTooltip(!showNameTooltip)}
+                        >
+                            ⓘ
+                        </div>
+                    </div>
+                    <Tooltip
+                        text="Le nom complet ne peut pas être modifié. Contactez le support pour toute demande."
+                        show={showNameTooltip}
                     />
                 </div>
 
+                {/* Dropdown Concession */}
                 <div>
                     <label className="block text-sm font-medium">Concession</label>
                     <select
@@ -119,6 +164,7 @@ export default function Profile() {
                     </select>
                 </div>
 
+                {/* Mettre à jour le profil */}
                 <button
                     onClick={updateProfile}
                     className="bg-blue-500 text-white p-2 w-full rounded"
@@ -126,6 +172,7 @@ export default function Profile() {
                     Mettre à jour le profil
                 </button>
 
+                {/* Nouveau mot de passe */}
                 <div>
                     <label className="block text-sm font-medium">Nouveau mot de passe</label>
                     <input

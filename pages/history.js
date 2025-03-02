@@ -18,7 +18,7 @@ export default function History() {
     const [showModal, setShowModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [recordToDelete, setRecordToDelete] = useState(null);
-    const [enlargedPhoto, setEnlargedPhoto] = useState(null);
+    const [enlargedPhoto, setEnlargedPhoto] = useState(null); // Pour la modal photo
 
     const router = useRouter();
 
@@ -138,19 +138,36 @@ export default function History() {
                             <p className="text-sm">{record.fields['Collaborateur']}</p>
                         </div>
                         <div className="flex flex-col space-y-2">
-                            <button onClick={() => handleEditClick(record)}>
-                                ✏️
-                            </button>
-                            <button onClick={() => handleDeleteClick(record)}>
-                                🗑️
-                            </button>
+                            <button onClick={() => handleEditClick(record)}>✏️</button>
+                            <button onClick={() => handleDeleteClick(record)}>🗑️</button>
                         </div>
                     </div>
                 ))}
 
+                {/* Modal pour agrandir la photo */}
+                {enlargedPhoto && (
+                    <div className="fixed inset-0 bg-black bg-opacity-80 flex justify-center items-center z-50">
+                        <div className="relative bg-white rounded-lg overflow-hidden max-w-full max-h-full">
+                            <img
+                                src={enlargedPhoto}
+                                alt="Agrandissement"
+                                className="max-w-full max-h-[90vh] object-contain"
+                            />
+                            <div className="p-4 text-center">
+                                <button
+                                    onClick={handleClosePhotoModal}
+                                    className="bg-blue-600 text-white px-4 py-2 rounded"
+                                >
+                                    Fermer
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* Modal de modification */}
                 {showModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center transition-opacity animate-fadeIn z-50">
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
                         <div className="bg-white p-6 rounded-lg">
                             <h2 className="text-xl font-bold">Modifier la plaque / VIN</h2>
                             <input
@@ -168,7 +185,7 @@ export default function History() {
 
                 {/* Modal de suppression */}
                 {showDeleteModal && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center transition-opacity animate-fadeIn z-50">
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
                         <div className="bg-white p-6 rounded-lg">
                             <h2 className="text-xl font-bold">Confirmer la suppression</h2>
                             <p>Voulez-vous vraiment supprimer cet enregistrement ?</p>

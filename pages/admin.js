@@ -6,6 +6,7 @@ export default function Admin() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [concession, setConcession] = useState('');
+    const [fullName, setFullName] = useState('');  // Nouveau champ "Nom complet"
     const [errorMessage, setErrorMessage] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
 
@@ -16,7 +17,7 @@ export default function Admin() {
         const response = await fetch('/api/createUser', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password, concession })
+            body: JSON.stringify({ email, password, concession, fullName })  // Ajout du fullName ici
         });
 
         const result = await response.json();
@@ -26,6 +27,7 @@ export default function Admin() {
             setEmail('');
             setPassword('');
             setConcession('');
+            setFullName('');  // Reset du champ
         } else {
             setErrorMessage(result.error || 'Erreur inconnue');
         }
@@ -55,6 +57,16 @@ export default function Admin() {
                             type="email"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
+                            className="w-full p-2 border rounded"
+                        />
+                    </div>
+
+                    <div>
+                        <label className="block font-medium">Nom complet</label>
+                        <input
+                            type="text"
+                            value={fullName}
+                            onChange={(e) => setFullName(e.target.value)}
                             className="w-full p-2 border rounded"
                         />
                     </div>

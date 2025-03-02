@@ -54,7 +54,7 @@ export default function Inventory() {
 
         if (response.ok) {
             alert('Photo envoyée avec succès !');
-            router.push('/history');
+            setPhoto(null); // Réinitialise le champ photo pour permettre une autre capture
         } else {
             alert('Erreur lors de l’envoi.');
         }

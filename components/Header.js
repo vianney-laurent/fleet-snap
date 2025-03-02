@@ -1,10 +1,31 @@
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 
-export default function Header({ userInitials = 'VL' }) {
+export default function Header() {
     const [menuOpen, setMenuOpen] = useState(false);
+    const [userInitials, setUserInitials] = useState('??');  // Par défaut
+
     const router = useRouter();
+
+    useEffect(() => {
+        // Récupère le nom complet dans le localStorage (mis lors de la connexion)
+        const fullName = localStorage.getItem('userName') || '';
+
+        if (fullName) {
+            const initials = getInitials(fullName);
+            setUserInitials(initials);
+        } else {
+            setUserInitials('??');  // Sécurité si jamais le nom n'est pas dispo
+        }
+    }, []);
+
+    const getInitials = (name) => {
+        const parts = name.split(' ');
+        if (parts.length === 1) {
+            return parts[0][0]?.toUpperCase() || '?';
+        }
+        return (parts[0][0] + parts[1][0])?.toUpperCase();
+    };
 
     const handleNavigation = (path) => {
         setMenuOpen(false);
@@ -19,7 +40,7 @@ export default function Header({ userInitials = 'VL' }) {
                 <span className="font-bold text-lg text-gray-800"></span>
             </div>
 
-            {/* Bouton profil (menu burger-like) */}
+            {/* Bouton profil avec initiales dynamiques */}
             <div className="relative">
                 <button
                     className="w-10 h-10 bg-gray-200 text-gray-700 flex items-center justify-center rounded-full font-bold"

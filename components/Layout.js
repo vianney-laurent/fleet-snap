@@ -26,7 +26,7 @@ export default function Layout({ children }) {
             message,
         };
 
-        const response = await fetch('https://hook.eu2.make.com/ton_webhook_make', {
+        const response = await fetch('https://hook.eu2.make.com/dyor7yt9fohp42sj4iec3awxokujivs8', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),

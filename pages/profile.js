@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
-import concessions from '../data/concessions.json';  // Import du JSON
+import concessions from '../data/concessions.json';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -102,10 +102,22 @@ export default function Profile() {
         }
     }
 
-    const Tooltip = ({ text, show, tooltipRef }) => (
+    const Tooltip = ({ text, show, onClose, tooltipRef }) => (
         show && (
-            <div ref={tooltipRef} className="absolute left-6 top-6 mt-1 bg-gray-800 text-white text-xs rounded p-2 shadow-lg z-50 max-w-xs">
-                {text}
+            <div
+                ref={tooltipRef}
+                className="absolute left-6 top-6 mt-2 bg-gray-800 text-white text-xs rounded p-3 shadow-lg z-50 max-w-xs"
+                style={{ transform: 'translateX(-20px)' }} // Décalage pour ne pas recouvrir le "i"
+            >
+                <div className="flex justify-between items-center">
+                    <span>{text}</span>
+                    <button
+                        onClick={onClose}
+                        className="ml-2 text-white font-bold"
+                    >
+                        ✖
+                    </button>
+                </div>
             </div>
         )
     );
@@ -135,6 +147,7 @@ export default function Profile() {
                     <Tooltip
                         text="L'email ne peut pas être modifié. Contactez le support pour toute demande."
                         show={showEmailTooltip}
+                        onClose={() => setShowEmailTooltip(false)}
                         tooltipRef={emailTooltipRef}
                     />
                 </div>
@@ -159,6 +172,7 @@ export default function Profile() {
                     <Tooltip
                         text="Le nom complet ne peut pas être modifié. Contactez le support pour toute demande."
                         show={showNameTooltip}
+                        onClose={() => setShowNameTooltip(false)}
                         tooltipRef={nameTooltipRef}
                     />
                 </div>

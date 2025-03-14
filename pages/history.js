@@ -47,10 +47,12 @@ export default function History() {
           page: currentPage,
           limit: 10,
         });
-        if (startDate)
+        if (startDate) {
           queryParams.append('startDate', startDate.toISOString().slice(0, 10));
-        if (endDate)
+        }
+        if (endDate) {
           queryParams.append('endDate', endDate.toISOString().slice(0, 10));
+        }
 
         const response = await fetch(`/api/history?${queryParams.toString()}`);
         if (!response.ok) throw new Error(`Erreur API: ${response.status}`);
@@ -144,10 +146,12 @@ export default function History() {
       <div className="p-4 max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-4 text-center">Mon historique d'inventaire</h1>
         
-        {/* Section des datepickers séparés pour une meilleure lisibilité */}
-        <div className="mb-4 flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-4">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date de début</label>
+        {/* Datepickers : stack sur mobile, côte à côte en >= sm */}
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-end sm:space-x-4 space-y-4 sm:space-y-0">
+          <div className="min-w-[160px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date de début
+            </label>
             <DatePicker
               selected={startDate}
               onChange={(date) => setStartDate(date)}
@@ -157,16 +161,18 @@ export default function History() {
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Date de fin</label>
+          <div className="min-w-[160px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date de fin
+            </label>
             <DatePicker
               selected={endDate}
               onChange={(date) => setEndDate(date)}
               dateFormat="yyyy-MM-dd"
               placeholderText="Sélectionner la date de fin"
               isClearable
-              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               minDate={startDate}
+              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
           </div>
         </div>
@@ -178,8 +184,9 @@ export default function History() {
           {records.map((record) => (
             <div
               key={record.id}
-              className="flex flex-col sm:flex-row items-center justify-between bg-white shadow rounded-lg p-4 border border-gray-200"
+              className="flex items-center justify-between bg-white shadow rounded-lg p-4 border border-gray-200"
             >
+              {/* Bloc de gauche : image + texte aligné à gauche */}
               <div className="flex items-center space-x-4">
                 <img
                   src={record.fields['Photo']?.[0]?.url || ''}
@@ -188,12 +195,20 @@ export default function History() {
                   onClick={() => handlePhotoClick(record.fields['Photo']?.[0]?.url)}
                 />
                 <div>
-                  <p className="font-bold text-lg">{record.fields['Plaque / VIN']}</p>
-                  <p className="text-sm text-gray-500">{record.fields['Date']}</p>
-                  <p className="text-sm text-gray-600">{record.fields['Collaborateur']}</p>
+                  <p className="font-bold text-lg">
+                    {record.fields['Plaque / VIN']}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {record.fields['Collaborateur']}
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {record.fields['Date']}
+                  </p>
                 </div>
               </div>
-              <div className="flex space-x-2 mt-2 sm:mt-0">
+
+              {/* Boutons à droite, empilés l'un au-dessus de l'autre */}
+              <div className="flex flex-col space-y-2 ml-4">
                 <button
                   onClick={() => handleEditClick(record)}
                   className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"

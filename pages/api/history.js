@@ -1,5 +1,5 @@
 export default async function handler(req, res) {
-  const { collaborateur, page = 1, limit = 20 } = req.query;
+  const { collaborateur, page = 1, limit = 20, startDate, endDate } = req.query;
 
   if (!collaborateur) {
       return res.status(400).json({ error: 'Le collaborateur est requis' });
@@ -10,15 +10,20 @@ export default async function handler(req, res) {
   const start = (currentPage - 1) * recordsPerPage;
   const end = start + recordsPerPage;
 
-  const filterFormula = `Collaborateur="${collaborateur}"`;
-  const encodedFormula = encodeURIComponent(filterFormula);
+  let filterFormula = `Collaborateur="${collaborateur}"`;
 
+  // Ajout du filtrage par date si startDate et endDate sont fournis
+  if (startDate && endDate) {
+      filterFormula = `AND(${filterFormula}, IS_AFTER({Date}, "${startDate}"), IS_BEFORE({Date}, "${endDate}"))`;
+  }
+
+  const encodedFormula = encodeURIComponent(filterFormula);
   const airtableUrl = `https://api.airtable.com/v0/appJc8wEVopX9HoCj/Inventaire%202024?filterByFormula=${encodedFormula}&view=Vue%20globale`;
 
   try {
       let allRecords = [];
       let offset;
-      
+
       do {
           const url = offset ? `${airtableUrl}&offset=${offset}` : airtableUrl;
 

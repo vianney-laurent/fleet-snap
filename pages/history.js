@@ -19,6 +19,8 @@ export default function History() {
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [recordToDelete, setRecordToDelete] = useState(null);
     const [enlargedPhoto, setEnlargedPhoto] = useState(null); // Pour la modal photo
+    const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
 
     const router = useRouter();
 
@@ -35,11 +37,12 @@ export default function History() {
             const userName = userData.user.user_metadata?.name || '';
 
             try {
-                const response = await fetch(`/api/history?collaborateur=${encodeURIComponent(userName)}`);
+                const response = await fetch(`/api/history?collaborateur=${encodeURIComponent(userName)}&page=${currentPage}&limit=10`);
                 if (!response.ok) throw new Error(`Erreur API: ${response.status}`);
 
-                const { records } = await response.json();
+                const { records, totalPages } = await response.json();
                 setRecords(records || []);
+                setTotalPages(totalPages);
             } catch (err) {
                 setError('Impossible de récupérer les données.');
             } finally {
@@ -48,7 +51,7 @@ export default function History() {
         }
 
         fetchUserAndData();
-    }, [router]);
+    }, [router, currentPage]);
 
     const handleEditClick = (record) => {
         setEditingRecord(record);
@@ -197,6 +200,13 @@ export default function History() {
                     </div>
                 )}
             </div>
+
+            <div className="flex justify-between mt-4">
+                <button disabled={currentPage === 1} onClick={() => setCurrentPage(currentPage - 1)} className="px-4 py-2 bg-gray-300 rounded">Précédent</button>
+                <span>Page {currentPage} sur {totalPages}</span>
+                <button disabled={currentPage === totalPages} onClick={() => setCurrentPage(currentPage + 1)} className="px-4 py-2 bg-gray-300 rounded">Suivant</button>
+            </div>
+
         </Layout>
     );
 }

@@ -5,9 +5,13 @@ import concessions from '../data/concessions.json';
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'supersecret';
 
 export default function Admin() {
-  // On appelle tous les hooks inconditionnellement
+  // Pour éviter les erreurs de SSR/hydratation, on attend que le composant soit monté
   const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   
+  // Tous les hooks sont appelés inconditionnellement
   // États pour l'accès admin
   const [accessGranted, setAccessGranted] = useState(false);
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
@@ -40,15 +44,8 @@ export default function Admin() {
   const [updateConcessionSuccess, setUpdateConcessionSuccess] = useState('');
   const [updateConcessionError, setUpdateConcessionError] = useState('');
 
-  // useEffect pour définir mounted sur true
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  // Si le composant n'est pas encore monté, on affiche un fallback
-  if (!mounted) {
-    return <div className="p-6 text-center">Chargement...</div>;
-  }
+  // Attendre le montage du composant pour éviter les erreurs d'hydratation
+  if (!mounted) return <div className="p-6 text-center">Chargement...</div>;
 
   const handlePasswordSubmit = () => {
     if (adminPasswordInput === ADMIN_PASSWORD) {
@@ -78,6 +75,7 @@ export default function Admin() {
   const handleCreateUser = async () => {
     setCreateErrorMessage('');
     setCreateSuccessMessage('');
+
     const response = await fetch('/api/createUser', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -88,7 +86,9 @@ export default function Admin() {
         concession: createConcession
       })
     });
+
     const result = await response.json();
+
     if (response.ok) {
       setCreateSuccessMessage(`Utilisateur ${createEmail} créé avec succès !`);
       setCreateEmail('');
@@ -101,6 +101,7 @@ export default function Admin() {
     }
   };
 
+  // Partie "Modifier un utilisateur" (editUser) – version modernisée
   const handleSelectUser = (user) => {
     setSelectedUser(user);
     setEditFullName(user.user_metadata?.name || '');
@@ -119,7 +120,9 @@ export default function Admin() {
         concession: editConcession,
       }),
     });
+
     const result = await response.json();
+
     if (response.ok) {
       setEditSuccessMessage('Utilisateur mis à jour avec succès !');
       fetchUsers();
@@ -134,7 +137,9 @@ export default function Admin() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: selectedUser.email })
     });
+
     const result = await response.json();
+
     if (response.ok) {
       setEditSuccessMessage(`Email de réinitialisation envoyé à ${selectedUser.email}`);
     } else {
@@ -142,8 +147,7 @@ export default function Admin() {
     }
   };
 
-  // --- Gestion des concessions ---
-
+  // --- Gestion des concessions (Réglages) ---
   const handleAddConcession = async () => {
     setAddConcessionSuccess('');
     setAddConcessionError('');
@@ -295,20 +299,39 @@ export default function Admin() {
             <>
               <h2 className="text-xl font-bold">Modifier un utilisateur</h2>
               {loadingUsers ? <p>Chargement...</p> : (
-                <ul className="max-h-60 overflow-y-auto space-y-2 bg-white p-2 border rounded">
+                <div className="grid grid-cols-1 gap-4">
                   {users.map((user) => (
-                    <li key={user.id} className={`cursor-pointer p-2 ${selectedUser?.id === user.id ? 'bg-blue-100' : 'hover:bg-gray-100'}`} onClick={() => handleSelectUser(user)}>
-                      {user.user_metadata?.name} - {user.email}
-                    </li>
+                    <div 
+                      key={user.id} 
+                      className={`flex items-center justify-between bg-white p-4 border rounded shadow-sm cursor-pointer hover:bg-gray-50 ${selectedUser?.id === user.id ? 'border-blue-600' : ''}`}
+                      onClick={() => handleSelectUser(user)}
+                    >
+                      <div>
+                        <p className="font-bold">{user.user_metadata?.name}</p>
+                        <p className="text-sm text-gray-600">{user.email}</p>
+                      </div>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSelectUser(user);
+                        }}
+                        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        title="Modifier"
+                      >
+                        ✏️
+                      </button>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
               {selectedUser && (
                 <>
-                  <input className="w-full p-2 border rounded" value={editFullName} onChange={(e) => setEditFullName(e.target.value)} />
-                  <select className="w-full p-2 border rounded" value={editConcession} onChange={(e) => setEditConcession(e.target.value)}>
-                    {concessionList.map(c => <option key={c}>{c}</option>)}
-                  </select>
+                  <div className="mt-4 space-y-2">
+                    <input className="w-full p-2 border rounded" value={editFullName} onChange={(e) => setEditFullName(e.target.value)} placeholder="Nom complet" />
+                    <select className="w-full p-2 border rounded" value={editConcession} onChange={(e) => setEditConcession(e.target.value)}>
+                      {concessionList.map(c => <option key={c}>{c}</option>)}
+                    </select>
+                  </div>
                   <button onClick={handleUpdateUser} className="bg-blue-600 text-white py-2 px-4 rounded w-full mt-2">Mettre à jour</button>
                   <button onClick={handleSendPasswordReset} className="bg-blue-600 text-white py-2 px-4 rounded w-full mt-2">Réinitialiser mot de passe</button>
                 </>
@@ -320,7 +343,6 @@ export default function Admin() {
             <div className="space-y-6">
               <h2 className="text-xl font-bold">Réglages du site</h2>
               <h3 className="text-lg font-semibold">Gestion des concessions</h3>
-              {/* Liste moderne des concessions */}
               <div className="grid grid-cols-1 gap-4">
                 {concessionList.map((concession, index) => (
                   <div key={index} className="flex items-center justify-between bg-white p-4 border rounded shadow-sm">
@@ -357,8 +379,6 @@ export default function Admin() {
                   </div>
                 ))}
               </div>
-
-              {/* Formulaire pour ajouter une nouvelle concession */}
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700">Ajouter une nouvelle concession</label>
                 <input 

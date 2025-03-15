@@ -1,14 +1,59 @@
-import { useState, useEffect } from 'react';
-import DatePicker from 'react-datepicker';
+import { useState, useEffect, forwardRef } from 'react';
+import DatePicker, { registerLocale } from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 
+// 1. Import de la locale française
+import fr from 'date-fns/locale/fr';
+// 2. Enregistrement de la locale
+registerLocale('fr', fr);
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
+
+// Composant custom pour le datepicker (un seul champ)
+const CustomDateInput = forwardRef(({ value, onClick, clearSelection }, ref) => {
+  return (
+    <div className="relative">
+      <input 
+        type="text"
+        onClick={onClick}
+        value={value}
+        readOnly
+        ref={ref}
+        className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        placeholder="Sélectionner une plage de dates"
+      />
+      {/* Icône calendrier à gauche */}
+      <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+        <span role="img" aria-label="calendar">📅</span>
+      </div>
+      {/* Bouton pour effacer la sélection si une plage est renseignée */}
+      {value && (
+        <button
+          type="button"
+          onClick={clearSelection}
+          className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-500"
+          title="Effacer la sélection"
+        >
+          <span role="img" aria-label="clear">❌</span>
+        </button>
+      )}
+    </div>
+  );
+});
+
+// Fonction utilitaire pour formater la date en local (AAAA-MM-JJ)
+function toLocalDateString(date) {
+  if (!date) return '';
+  const offset = date.getTimezoneOffset(); // en minutes
+  const localTime = new Date(date.getTime() - offset * 60_000);
+  return localTime.toISOString().split('T')[0];
+}
 
 export default function History() {
   // États de gestion
@@ -24,10 +69,10 @@ export default function History() {
   const [enlargedPhoto, setEnlargedPhoto] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  
-  // États pour les dates avec deux datepickers séparés
-  const [startDate, setStartDate] = useState(null);
-  const [endDate, setEndDate] = useState(null);
+
+  // Un seul datepicker en mode range
+  const [dateRange, setDateRange] = useState([null, null]);
+  const [startDate, endDate] = dateRange;
 
   const router = useRouter();
 
@@ -39,19 +84,24 @@ export default function History() {
         return;
       }
       setUser(userData.user);
-      const userName = userData.user.user_metadata?.name || '';
 
+      const userName = userData.user.user_metadata?.name || '';
       try {
         const queryParams = new URLSearchParams({
           collaborateur: userName,
           page: currentPage,
           limit: 10,
         });
+
         if (startDate) {
-          queryParams.append('startDate', startDate.toISOString().slice(0, 10));
+          // minuit local
+          startDate.setHours(0, 0, 0, 0);
+          queryParams.append('startDate', toLocalDateString(startDate));
         }
         if (endDate) {
-          queryParams.append('endDate', endDate.toISOString().slice(0, 10));
+          // fin de journée local
+          endDate.setHours(23, 59, 59, 999);
+          queryParams.append('endDate', toLocalDateString(endDate));
         }
 
         const response = await fetch(`/api/history?${queryParams.toString()}`);
@@ -69,7 +119,7 @@ export default function History() {
     fetchUserAndData();
   }, [router, user?.id, currentPage, startDate, endDate]);
 
-  // Fonctions de gestion (édition, suppression, affichage de photo, etc.)
+  // Fonctions de gestion
   const handleEditClick = (record) => {
     setEditingRecord(record);
     setNewPlateVin(record.fields['Plaque / VIN']);
@@ -133,6 +183,11 @@ export default function History() {
     setEnlargedPhoto(null);
   };
 
+  // Remise à zéro de la plage de dates via la croix
+  const clearDateRange = () => {
+    setDateRange([null, null]);
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -146,35 +201,21 @@ export default function History() {
       <div className="p-4 max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-4 text-center">Mon historique d'inventaire</h1>
         
-        {/* Datepickers : stack sur mobile, côte à côte en >= sm */}
-        <div className="mb-4 flex flex-col sm:flex-row sm:items-end sm:space-x-4 space-y-4 sm:space-y-0">
-          <div className="min-w-[160px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date de début
-            </label>
-            <DatePicker
-              selected={startDate}
-              onChange={(date) => setStartDate(date)}
-              dateFormat="yyyy-MM-dd"
-              placeholderText="Début"
-              isClearable
-              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="min-w-[160px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date de fin
-            </label>
-            <DatePicker
-              selected={endDate}
-              onChange={(date) => setEndDate(date)}
-              dateFormat="yyyy-MM-dd"
-              placeholderText="Fin"
-              isClearable
-              minDate={startDate}
-              className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+        {/* Datepicker unique en mode range avec locale FR */}
+        <div className="mb-6">
+          <DatePicker
+            selectsRange
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(update) => {
+              setDateRange(update);
+            }}
+            dateFormat="yyyy-MM-dd"
+            locale="fr" // Le lundi devient premier jour
+            customInput={
+              <CustomDateInput clearSelection={clearDateRange} />
+            }
+          />
         </div>
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
@@ -186,7 +227,6 @@ export default function History() {
               key={record.id}
               className="flex items-center justify-between bg-white shadow rounded-lg p-4 border border-gray-200"
             >
-              {/* Bloc de gauche : image + texte aligné à gauche */}
               <div className="flex items-center space-x-4">
                 <img
                   src={record.fields['Photo']?.[0]?.url || ''}
@@ -195,7 +235,6 @@ export default function History() {
                   onClick={() => handlePhotoClick(record.fields['Photo']?.[0]?.url)}
                 />
                 <div>
-                  {/* VIN ou plaque sans troncature */}
                   <p className="font-bold text-lg">
                     {record.fields['Plaque / VIN']}
                   </p>
@@ -207,8 +246,6 @@ export default function History() {
                   </p>
                 </div>
               </div>
-
-              {/* Boutons à droite, empilés l'un au-dessus de l'autre */}
               <div className="flex flex-col space-y-2 ml-4">
                 <button
                   onClick={() => handleEditClick(record)}

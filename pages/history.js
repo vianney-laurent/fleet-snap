@@ -5,9 +5,8 @@ import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
 
-// 1. Import de la locale française
+// Enregistrement de la locale française (pour commencer le calendrier le lundi)
 import fr from 'date-fns/locale/fr';
-// 2. Enregistrement de la locale
 registerLocale('fr', fr);
 
 const supabase = createClient(
@@ -15,7 +14,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
 
-// Composant custom pour le datepicker (un seul champ)
+// Composant personnalisé pour le datepicker
 const CustomDateInput = forwardRef(({ value, onClick, clearSelection }, ref) => {
   return (
     <div className="relative">
@@ -32,7 +31,7 @@ const CustomDateInput = forwardRef(({ value, onClick, clearSelection }, ref) => 
       <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
         <span role="img" aria-label="calendar">📅</span>
       </div>
-      {/* Bouton pour effacer la sélection si une plage est renseignée */}
+      {/* Bouton pour effacer la sélection */}
       {value && (
         <button
           type="button"
@@ -46,14 +45,6 @@ const CustomDateInput = forwardRef(({ value, onClick, clearSelection }, ref) => 
     </div>
   );
 });
-
-// Fonction utilitaire pour formater la date en local (AAAA-MM-JJ)
-function toLocalDateString(date) {
-  if (!date) return '';
-  const offset = date.getTimezoneOffset(); // en minutes
-  const localTime = new Date(date.getTime() - offset * 60_000);
-  return localTime.toISOString().split('T')[0];
-}
 
 export default function History() {
   // États de gestion
@@ -84,8 +75,8 @@ export default function History() {
         return;
       }
       setUser(userData.user);
-
       const userName = userData.user.user_metadata?.name || '';
+
       try {
         const queryParams = new URLSearchParams({
           collaborateur: userName,
@@ -94,14 +85,16 @@ export default function History() {
         });
 
         if (startDate) {
-          // minuit local
+          // Pour la date de début, on utilise la date sélectionnée telle quelle
           startDate.setHours(0, 0, 0, 0);
-          queryParams.append('startDate', toLocalDateString(startDate));
+          queryParams.append('startDate', startDate.toISOString().split('T')[0]);
         }
         if (endDate) {
-          // fin de journée local
+          // Pour la date de fin, on force l'heure à 23:59:59, puis on ajoute un jour
           endDate.setHours(23, 59, 59, 999);
-          queryParams.append('endDate', toLocalDateString(endDate));
+          const adjustedEndDate = new Date(endDate);
+          adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
+          queryParams.append('endDate', adjustedEndDate.toISOString().split('T')[0]);
         }
 
         const response = await fetch(`/api/history?${queryParams.toString()}`);
@@ -116,10 +109,11 @@ export default function History() {
         setLoading(false);
       }
     }
+    // Recharge dès que la plage ou la page change
     fetchUserAndData();
   }, [router, user?.id, currentPage, startDate, endDate]);
 
-  // Fonctions de gestion
+  // Fonctions de gestion (édition, suppression, etc.)
   const handleEditClick = (record) => {
     setEditingRecord(record);
     setNewPlateVin(record.fields['Plaque / VIN']);
@@ -183,7 +177,7 @@ export default function History() {
     setEnlargedPhoto(null);
   };
 
-  // Remise à zéro de la plage de dates via la croix
+  // Réinitialiser la plage de dates via la croix
   const clearDateRange = () => {
     setDateRange([null, null]);
   };
@@ -211,10 +205,8 @@ export default function History() {
               setDateRange(update);
             }}
             dateFormat="yyyy-MM-dd"
-            locale="fr" // Le lundi devient premier jour
-            customInput={
-              <CustomDateInput clearSelection={clearDateRange} />
-            }
+            locale="fr"  // Le calendrier commence le lundi
+            customInput={<CustomDateInput clearSelection={clearDateRange} />}
           />
         </div>
 
@@ -227,6 +219,7 @@ export default function History() {
               key={record.id}
               className="flex items-center justify-between bg-white shadow rounded-lg p-4 border border-gray-200"
             >
+              {/* Bloc gauche : image + texte aligné à gauche */}
               <div className="flex items-center space-x-4">
                 <img
                   src={record.fields['Photo']?.[0]?.url || ''}
@@ -246,6 +239,8 @@ export default function History() {
                   </p>
                 </div>
               </div>
+
+              {/* Boutons à droite, empilés verticalement */}
               <div className="flex flex-col space-y-2 ml-4">
                 <button
                   onClick={() => handleEditClick(record)}

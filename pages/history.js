@@ -156,7 +156,7 @@ export default function History() {
               selected={startDate}
               onChange={(date) => setStartDate(date)}
               dateFormat="yyyy-MM-dd"
-              placeholderText="Sélectionner la date de début"
+              placeholderText="Début"
               isClearable
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -169,7 +169,7 @@ export default function History() {
               selected={endDate}
               onChange={(date) => setEndDate(date)}
               dateFormat="yyyy-MM-dd"
-              placeholderText="Sélectionner la date de fin"
+              placeholderText="Fin"
               isClearable
               minDate={startDate}
               className="w-full p-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -195,6 +195,7 @@ export default function History() {
                   onClick={() => handlePhotoClick(record.fields['Photo']?.[0]?.url)}
                 />
                 <div>
+                  {/* VIN ou plaque sans troncature */}
                   <p className="font-bold text-lg">
                     {record.fields['Plaque / VIN']}
                   </p>
@@ -211,15 +212,17 @@ export default function History() {
               <div className="flex flex-col space-y-2 ml-4">
                 <button
                   onClick={() => handleEditClick(record)}
-                  className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                  title="Modifier"
                 >
-                  Éditer
+                  ✏️
                 </button>
                 <button
                   onClick={() => handleDeleteClick(record)}
-                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                  title="Supprimer"
                 >
-                  Supprimer
+                  🗑️
                 </button>
               </div>
             </div>

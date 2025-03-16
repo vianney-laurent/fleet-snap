@@ -101,7 +101,9 @@ export default function History() {
         if (!response.ok) throw new Error(`Erreur API: ${response.status}`);
 
         const { records, totalPages } = await response.json();
-        setRecords(records || []);
+        // Trier les records du plus récent au plus ancien en se basant sur record.fields['Date']
+        const sortedRecords = [...(records || [])].sort((a, b) => new Date(b.fields['Date']) - new Date(a.fields['Date']));
+        setRecords(sortedRecords);
         setTotalPages(totalPages);
       } catch (err) {
         setError('Impossible de récupérer les données.');

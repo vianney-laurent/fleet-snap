@@ -1,4 +1,4 @@
-// ✅ pages/api/updateRecord.js — version Supabase
+// ✅ pages/api/updateRecord.js — version Supabase avec identifiant + commentaire
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -12,16 +12,24 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Méthode non autorisée' });
   }
 
-  const { recordId, newPlateVin } = req.body;
+  const { recordId, newPlateVin, newCommentaire } = req.body;
 
-  if (!recordId || !newPlateVin) {
-    return res.status(400).json({ error: 'Données manquantes' });
+  if (!recordId) {
+    return res.status(400).json({ error: 'recordId manquant' });
+  }
+
+  const updateFields = {};
+  if (newPlateVin !== undefined) updateFields.identifiant = newPlateVin;
+  if (newCommentaire !== undefined) updateFields.commentaire = newCommentaire;
+
+  if (Object.keys(updateFields).length === 0) {
+    return res.status(400).json({ error: 'Aucune donnée à mettre à jour' });
   }
 
   try {
     const { error } = await supabase
       .from('inventaire')
-      .update({ identifiant: newPlateVin })
+      .update(updateFields)
       .eq('id', recordId);
 
     if (error) {

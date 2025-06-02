@@ -1,5 +1,3 @@
-// ✅ pages/history.js — version adaptée à Supabase
-
 import { useState, useEffect, forwardRef } from 'react';
 import DatePicker, { registerLocale } from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
@@ -48,6 +46,7 @@ export default function History() {
   const [error, setError] = useState('');
   const [editingRecord, setEditingRecord] = useState(null);
   const [newPlateVin, setNewPlateVin] = useState('');
+  const [newCommentaire, setNewCommentaire] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState(null);
@@ -105,6 +104,7 @@ export default function History() {
   const handleEditClick = (record) => {
     setEditingRecord(record);
     setNewPlateVin(record.identifiant);
+    setNewCommentaire(record.commentaire || '');
     setShowModal(true);
   };
 
@@ -112,18 +112,24 @@ export default function History() {
     setShowModal(false);
     setEditingRecord(null);
     setNewPlateVin('');
+    setNewCommentaire('');
   };
 
   const handleSave = async () => {
     const response = await fetch(`/api/updateRecord`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recordId: editingRecord.id, newPlateVin })
+      body: JSON.stringify({
+        recordId: editingRecord.id,
+        newPlateVin,
+        newCommentaire
+      })
     });
+
     if (response.ok) {
       setRecords(records.map((r) =>
         r.id === editingRecord.id
-          ? { ...r, identifiant: newPlateVin }
+          ? { ...r, identifiant: newPlateVin, commentaire: newCommentaire }
           : r
       ));
       handleCloseModal();
@@ -211,6 +217,9 @@ export default function History() {
                 />
                 <div>
                   <p className="font-bold text-lg">{record.identifiant}</p>
+                  {record.commentaire && (
+                    <p className="text-sm text-gray-700 italic">{record.commentaire}</p>
+                  )}
                   <p className="text-sm text-gray-600">{record.collaborateur}</p>
                   <p className="text-sm text-gray-500">{new Date(record.created_at).toLocaleDateString('fr-FR')}</p>
                 </div>
@@ -231,30 +240,29 @@ export default function History() {
           ))}
         </div>
 
-        {enlargedPhoto && (
-          <div className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50">
-            <div className="relative bg-white rounded-lg overflow-hidden max-w-full max-h-full p-4">
-              <img src={enlargedPhoto} alt="Agrandissement" className="max-w-full max-h-[90vh] object-contain" />
-              <div className="text-center mt-4">
-                <button
-                  onClick={handleClosePhotoModal}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >Fermer</button>
-              </div>
-            </div>
-          </div>
-        )}
-
+        {/* Modale d'édition */}
         {showModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
             <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-              <h2 className="text-xl font-bold mb-4">Modifier la plaque / VIN</h2>
+              <h2 className="text-xl font-bold mb-4">Modifier l’enregistrement</h2>
+
+              <label className="block mb-2 font-medium">Plaque / VIN</label>
               <input
                 className="border p-2 w-full rounded mb-4"
                 value={newPlateVin}
                 onChange={(e) => setNewPlateVin(e.target.value)}
                 placeholder="Nouvelle plaque / VIN"
               />
+
+              <label className="block mb-2 font-medium">Commentaire</label>
+              <textarea
+                className="border p-2 w-full rounded mb-4"
+                rows={3}
+                value={newCommentaire}
+                onChange={(e) => setNewCommentaire(e.target.value)}
+                placeholder="Ajouter un commentaire"
+              />
+
               <div className="flex justify-between">
                 <button onClick={handleCloseModal} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Annuler</button>
                 <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Enregistrer</button>
@@ -262,6 +270,8 @@ export default function History() {
             </div>
           </div>
         )}
+
+        {/* Modale suppression et pagination identique à avant */}
 
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">

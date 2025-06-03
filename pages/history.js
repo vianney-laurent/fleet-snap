@@ -54,6 +54,11 @@ export default function History() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [dateRange, setDateRange] = useState([null, null]);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
+  const [exportDateRange, setExportDateRange] = useState([null, null]);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [exportSuccess, setExportSuccess] = useState(false);
+  const [exportError, setExportError] = useState('');
   const [startDate, endDate] = dateRange;
   const router = useRouter();
 
@@ -158,6 +163,35 @@ export default function History() {
     }
   };
 
+  const handleExport = async () => {
+  setExportLoading(true);
+  setExportError('');
+  setExportSuccess(false);
+  try {
+    const [start, end] = exportDateRange;
+    const body = {
+      email: user.email,
+      concession: records[0]?.concession || 'non_précisée',
+      startDate: start ? start.toISOString().split('T')[0] : null,
+      endDate: end ? end.toISOString().split('T')[0] : null,
+    };
+
+    const response = await fetch('/api/exportInventory', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) throw new Error('Erreur lors de l’export');
+
+    setExportSuccess(true);
+  } catch (err) {
+    setExportError("Une erreur est survenue pendant l'export.");
+  } finally {
+    setExportLoading(false);
+  }
+};
+
   const handleCloseDeleteModal = () => {
     setShowDeleteModal(false);
     setRecordToDelete(null);
@@ -188,17 +222,23 @@ export default function History() {
       <div className="p-4 max-w-4xl mx-auto">
         <h1 className="text-2xl font-bold mb-4 text-center">Mon historique d'inventaire</h1>
 
-        <div className="mb-6">
-          <DatePicker
-            selectsRange
-            startDate={startDate}
-            endDate={endDate}
-            onChange={(update) => setDateRange(update)}
-            dateFormat="yyyy-MM-dd"
-            locale="fr"
-            customInput={<CustomDateInput clearSelection={clearDateRange} />}
-          />
-        </div>
+       <div className="flex justify-between items-center mb-6">
+        <DatePicker
+          selectsRange
+          startDate={startDate}
+          endDate={endDate}
+          onChange={(update) => setDateRange(update)}
+          dateFormat="yyyy-MM-dd"
+          locale="fr"
+          customInput={<CustomDateInput clearSelection={clearDateRange} />}
+        />
+        <button
+          onClick={() => setExportModalOpen(true)}
+          className="ml-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+        >
+          📤 Exporter
+        </button>
+      </div>
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
 
@@ -299,6 +339,32 @@ export default function History() {
             className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50"
           >Suivant</button>
         </div>
+
+        {exportModalOpen && (
+  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
+    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+      <h2 className="text-xl font-bold mb-4">Exporter l'inventaire</h2>
+      <p className="text-sm mb-4">Choisissez une plage de dates (facultatif) :</p>
+      <DatePicker
+        selectsRange
+        startDate={exportDateRange[0]}
+        endDate={exportDateRange[1]}
+        onChange={(update) => setExportDateRange(update)}
+        dateFormat="yyyy-MM-dd"
+        locale="fr"
+        className="w-full mb-4"
+      />
+      {exportError && <p className="text-red-500 mb-2">{exportError}</p>}
+      {exportSuccess && <p className="text-green-600 mb-2">Email envoyé avec succès !</p>}
+      <div className="flex justify-between mt-4">
+        <button onClick={() => setExportModalOpen(false)} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Annuler</button>
+        <button onClick={handleExport} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" disabled={exportLoading}>
+          {exportLoading ? 'Envoi...' : 'Envoyer par e-mail'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
       </div>
     </Layout>
   );

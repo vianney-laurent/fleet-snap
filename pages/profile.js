@@ -66,23 +66,26 @@ export default function Profile() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    async function updateProfile() {
-        const response = await fetch('/api/updateProfile', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, name, concession })
-        });
-
-        if (response.ok) {
-            alert('Profil mis à jour !');
-            localStorage.setItem('userName', name);
-            localStorage.setItem('userConcession', concession);
-            window.location.reload();
-        } else {
-            const errorData = await response.json();
-            alert(`Erreur : ${errorData.error || 'Impossible de mettre à jour le profil'}`);
-        }
+async function updateProfile() {
+    if (!user?.id) {
+        alert("Utilisateur non identifié.");
+        return;
     }
+    const response = await fetch('/api/updateProfile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: user.id, name, concession })
+    });
+
+    if (response.ok) {
+        alert("Profil mis à jour ! Pour que la modification soit prise en compte, vous allez être déconnecté(e) et devrez vous reconnecter.");
+        await supabase.auth.signOut();
+        router.push('/?reason=refresh-required');
+    } else {
+        const errorData = await response.json();
+        alert(`Erreur : ${errorData.error || 'Impossible de mettre à jour le profil'}`);
+    }
+}
 
     async function updatePassword() {
         if (!newPassword) {

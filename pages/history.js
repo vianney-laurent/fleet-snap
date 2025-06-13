@@ -85,9 +85,7 @@ export default function History() {
         }
         if (endDate) {
           endDate.setHours(23, 59, 59, 999);
-          const adjustedEndDate = new Date(endDate);
-          adjustedEndDate.setDate(adjustedEndDate.getDate() + 1);
-          queryParams.append('endDate', adjustedEndDate.toISOString().split('T')[0]);
+          queryParams.append('endDate', endDate.toISOString().split('T')[0]);
         }
 
         const response = await fetch(`/api/history?${queryParams.toString()}`);
@@ -168,13 +166,15 @@ export default function History() {
   setExportError('');
   setExportSuccess(false);
   try {
-    const [start, end] = exportDateRange;
-    const body = {
-      email: user.email,
-      concession: records[0]?.concession || 'non_précisée',
-      startDate: start ? start.toISOString().split('T')[0] : null,
-      endDate: end ? end.toISOString().split('T')[0] : null,
-    };
+      const [start, end] = exportDateRange;
+      if (start) start.setHours(0,0,0,0);
+      if (end) end.setHours(23,59,59,999);
+      const body = {
+        email: user.email,
+        concession: records[0]?.concession || 'non_précisée',
+        startDate: start ? start.toISOString() : null,
+        endDate: end ? end.toISOString() : null,
+      };
 
     const response = await fetch('/api/exportInventory', {
       method: 'POST',
@@ -258,7 +258,10 @@ export default function History() {
                 <div>
                   <p className="font-bold text-lg">{record.identifiant}</p>
                   {record.commentaire && (
-                    <p className="text-sm text-gray-700 italic">{record.commentaire}</p>
+                    <p className="text-sm text-gray-600 italic">{record.commentaire}</p>
+                  )}
+                  {record.zone && (
+                    <p className="text-sm text-gray-700">{record.zone}</p>
                   )}
                   <p className="text-sm text-gray-600">{record.collaborateur}</p>
                   <p className="text-sm text-gray-500">{new Date(record.created_at).toLocaleDateString('fr-FR')}</p>

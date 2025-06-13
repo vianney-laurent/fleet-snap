@@ -190,12 +190,12 @@ export default function Inventory() {
                   className="bg-green-500 text-white rounded-lg px-3 py-1"
                   type="button"
                   onClick={handleAddZone}
-                >Ajouter</button>
+                >✅</button>
                 <button
                   className="bg-gray-300 text-gray-700 rounded-lg px-3 py-1"
                   type="button"
                   onClick={() => setShowZoneInput(false)}
-                >Annuler</button>
+                >❌</button>
               </div>
             )}
             {zone && (

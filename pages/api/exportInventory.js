@@ -14,10 +14,10 @@ export default async function handler(req, res) {
     // Log des critères reçus (pour debug)
     console.log({ concession, startDate, endDate, collaborateur });
 
-    // Base query avec le select
+    // Ajout de zone au select
     let query = supabase
       .from('inventaire')
-      .select('created_at, concession, identifiant, commentaire, collaborateur, photo_url');
+      .select('created_at, concession, identifiant, commentaire, collaborateur, zone, photo_url');
 
     // Ajout des filtres dynamiquement
     if (concession) query = query.eq('concession', concession);
@@ -33,15 +33,16 @@ export default async function handler(req, res) {
       return res.status(500).json({ error: error.message });
     }
 
-    // Générer le CSV
+    // Générer le CSV : ajout "Zone"
     const csvRows = [
-      ['Date', 'Concession', 'Identifiant', 'Commentaire', 'Collaborateur', 'photo_url'],
+      ['Date', 'Concession', 'Identifiant', 'Commentaire', 'Collaborateur', 'Zone', 'photo_url'],
       ...(data || []).map(row => [
         new Date(row.created_at).toISOString().split('T')[0],
         row.concession,
         row.identifiant,
         row.commentaire || '',
         row.collaborateur,
+        row.zone || '',
         row.photo_url || ''
       ])
     ];

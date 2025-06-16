@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import concessions from '../data/concessions.json';
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'supersecret';
 
@@ -35,14 +34,37 @@ export default function Admin() {
   const [loadingUsers, setLoadingUsers] = useState(false);
 
   // États pour la gestion des concessions
-  const [concessionList, setConcessionList] = useState(concessions);
-  const [newConcession, setNewConcession] = useState('');
+  const [concessionList, setConcessionList] = useState([]);
   const [addConcessionSuccess, setAddConcessionSuccess] = useState('');
   const [addConcessionError, setAddConcessionError] = useState('');
   const [editingConcessionIndex, setEditingConcessionIndex] = useState(null);
   const [editingConcessionValue, setEditingConcessionValue] = useState('');
+  const [newConcession, setNewConcession] = useState('');
   const [updateConcessionSuccess, setUpdateConcessionSuccess] = useState('');
   const [updateConcessionError, setUpdateConcessionError] = useState('');
+
+  const fetchConcessions = async () => {
+  try {
+    const response = await fetch('/api/getConcessions');
+    const result = await response.json();
+    if (response.ok) {
+      setConcessionList(result.concessions);
+    }
+  } catch (error) {
+    // Optionnel : gestion d'erreur
+  }
+};
+useEffect(() => {
+  if (accessGranted) {
+    fetchConcessions();
+  }
+}, [accessGranted]);
+
+useEffect(() => {
+  if (accessGranted && activeTab === 'settings') {
+    fetchConcessions();
+  }
+}, [accessGranted, activeTab]);
 
   // Attendre le montage du composant pour éviter les erreurs d'hydratation
   if (!mounted) return <div className="p-6 text-center">Chargement...</div>;
@@ -147,90 +169,100 @@ export default function Admin() {
     }
   };
 
-  // --- Gestion des concessions (Réglages) ---
-  const handleAddConcession = async () => {
-    setAddConcessionSuccess('');
-    setAddConcessionError('');
-    if (!newConcession.trim()) {
-      setAddConcessionError("Le nom de la concession ne peut être vide.");
-      return;
-    }
-    try {
-      const response = await fetch('/api/addConcession', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ concession: newConcession.trim() })
-      });
-      const result = await response.json();
-      if (response.ok) {
-        setAddConcessionSuccess(`Concession "${newConcession}" ajoutée avec succès !`);
-        setNewConcession('');
-        setConcessionList(result.concessions);
-      } else {
-        setAddConcessionError(result.error || "Erreur lors de l'ajout.");
-      }
-    } catch (error) {
-      setAddConcessionError("Erreur lors de l'ajout.");
-    }
-  };
+// --- Gestion des concessions (Réglages) ---
 
-  const handleEditConcession = (index, concession) => {
-    setEditingConcessionIndex(index);
-    setEditingConcessionValue(concession);
-    setUpdateConcessionSuccess('');
-    setUpdateConcessionError('');
-  };
-
-  const handleCancelEditConcession = () => {
-    setEditingConcessionIndex(null);
-    setEditingConcessionValue('');
-    setUpdateConcessionSuccess('');
-    setUpdateConcessionError('');
-  };
-
-  const handleUpdateConcession = async () => {
-    const oldConcession = concessionList[editingConcessionIndex];
-    try {
-      const response = await fetch('/api/updateConcession', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          oldConcession,
-          newConcession: editingConcessionValue.trim(),
-        }),
-      });
-      const result = await response.json();
-      if (response.ok) {
-        setUpdateConcessionSuccess('Concession mise à jour avec succès !');
-        setConcessionList(result.concessions);
-        setEditingConcessionIndex(null);
-        setEditingConcessionValue('');
-      } else {
-        setUpdateConcessionError(result.error || "Erreur lors de la mise à jour.");
-      }
-    } catch (error) {
-      setUpdateConcessionError("Erreur lors de la mise à jour.");
+// Ajout d'une concession
+const handleAddConcession = async () => {
+  setAddConcessionSuccess('');
+  setAddConcessionError('');
+  if (!newConcession.trim()) {
+    setAddConcessionError("Le nom de la concession ne peut être vide.");
+    return;
+  }
+  try {
+    const response = await fetch('/api/addConcession', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newConcession.trim() })
+    });
+    const result = await response.json();
+    if (response.ok) {
+      setAddConcessionSuccess(`Concession "${newConcession}" ajoutée avec succès !`);
+      setNewConcession('');
+      setConcessionList(result.concessions); // concessions = [{id, name}]
+    } else {
+      setAddConcessionError(result.error || "Erreur lors de l'ajout.");
     }
-  };
+  } catch (error) {
+    setAddConcessionError("Erreur lors de l'ajout.");
+  }
+};
 
-  const handleDeleteConcession = async (index) => {
-    const concessionToDelete = concessionList[index];
-    try {
-      const response = await fetch('/api/deleteConcession', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ concession: concessionToDelete })
-      });
-      const result = await response.json();
-      if (response.ok) {
-        setConcessionList(result.concessions);
-      } else {
-        alert(result.error || "Erreur lors de la suppression.");
-      }
-    } catch (error) {
-      alert("Erreur lors de la suppression.");
+// Mise en édition d'une concession
+const handleEditConcession = (index, concession) => {
+  setEditingConcessionIndex(index);
+  setEditingConcessionValue(concession.name); // concession est maintenant un objet {id, name}
+  setUpdateConcessionSuccess('');
+  setUpdateConcessionError('');
+};
+
+// Annulation de l'édition
+const handleCancelEditConcession = () => {
+  setEditingConcessionIndex(null);
+  setEditingConcessionValue('');
+  setUpdateConcessionSuccess('');
+  setUpdateConcessionError('');
+};
+
+// Modification d'une concession
+const handleUpdateConcession = async () => {
+  const concessionToUpdate = concessionList[editingConcessionIndex];
+    console.log('API updateConcession payload:', {
+    id: concessionToUpdate?.id,
+    newName: editingConcessionValue.trim(),
+  });
+  try {
+    const response = await fetch('/api/updateConcession', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: concessionToUpdate.id,
+        newName: editingConcessionValue.trim(),
+      }),
+    });
+    const result = await response.json();
+    if (response.ok) {
+      setUpdateConcessionSuccess('Concession mise à jour avec succès !');
+      setConcessionList(result.concessions);
+      setEditingConcessionIndex(null);
+      setEditingConcessionValue('');
+    } else {
+      setUpdateConcessionError(result.error || "Erreur lors de la mise à jour.");
     }
-  };
+  } catch (error) {
+    setUpdateConcessionError("Erreur lors de la mise à jour.");
+  }
+};
+
+// Suppression d'une concession
+const handleDeleteConcession = async (index) => {
+  const concessionToDelete = concessionList[index];
+  try {
+    const response = await fetch('/api/deleteConcession', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: concessionToDelete.id })
+    });
+    const result = await response.json();
+    if (response.ok) {
+      setConcessionList(result.concessions);
+    } else {
+      alert(result.error || "Erreur lors de la suppression.");
+    }
+  } catch (error) {
+    alert("Erreur lors de la suppression.");
+  }
+};
 
   if (!accessGranted) {
     return (
@@ -289,7 +321,7 @@ export default function Admin() {
               <input className="w-full p-2 border rounded" placeholder="Mot de passe" type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
               <select className="w-full p-2 border rounded" value={createConcession} onChange={(e) => setCreateConcession(e.target.value)}>
                 <option value="">Sélectionnez une concession</option>
-                {concessionList.map(c => <option key={c}>{c}</option>)}
+                {concessionList.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
               <button onClick={handleCreateUser} className="bg-blue-600 text-white px-4 py-2 rounded mt-2">Créer l’utilisateur</button>
             </>
@@ -328,8 +360,17 @@ export default function Admin() {
                 <>
                   <div className="mt-4 space-y-2">
                     <input className="w-full p-2 border rounded" value={editFullName} onChange={(e) => setEditFullName(e.target.value)} placeholder="Nom complet" />
-                    <select className="w-full p-2 border rounded" value={editConcession} onChange={(e) => setEditConcession(e.target.value)}>
-                      {concessionList.map(c => <option key={c}>{c}</option>)}
+                    <select
+                      className="w-full p-2 border rounded"
+                      value={editConcession}
+                      onChange={(e) => setEditConcession(e.target.value)}
+                    >
+                      <option value="">Sélectionnez une concession</option>
+                      {concessionList.map(c => (
+                        <option key={c.id} value={c.name}>
+                          {c.name}
+                        </option>
+                      ))}
                     </select>
                   </div>
                   <button onClick={handleUpdateUser} className="bg-blue-600 text-white py-2 px-4 rounded w-full mt-2">Mettre à jour</button>
@@ -345,39 +386,39 @@ export default function Admin() {
               <h3 className="text-lg font-semibold">Gestion des concessions</h3>
               <div className="grid grid-cols-1 gap-4">
                 {concessionList.map((concession, index) => (
-                  <div key={index} className="flex items-center justify-between bg-white p-4 border rounded shadow-sm">
-                    {editingConcessionIndex === index ? (
-                      <>
-                        <input
-                          type="text"
-                          value={editingConcessionValue}
-                          onChange={(e) => setEditingConcessionValue(e.target.value)}
-                          className="flex-1 p-2 border rounded"
-                        />
-                        <div className="flex space-x-2 ml-2">
-                          <button onClick={handleUpdateConcession} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600" title="Enregistrer">
-                            ✔️
-                          </button>
-                          <button onClick={handleCancelEditConcession} className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400" title="Annuler">
-                            ❌
-                          </button>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <span className="flex-1">{concession}</span>
-                        <div className="flex space-x-2 ml-2">
-                          <button onClick={() => handleEditConcession(index, concession)} className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600" title="Modifier">
-                            ✏️
-                          </button>
-                          <button onClick={() => handleDeleteConcession(index)} className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600" title="Supprimer">
-                            🗑️
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                ))}
+  <div key={concession.id} className="flex items-center justify-between bg-white p-4 border rounded shadow-sm">
+    {editingConcessionIndex === index ? (
+      <>
+        <input
+          type="text"
+          value={editingConcessionValue}
+          onChange={(e) => setEditingConcessionValue(e.target.value)}
+          className="flex-1 p-2 border rounded"
+        />
+        <div className="flex space-x-2 ml-2">
+          <button onClick={handleUpdateConcession} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600" title="Enregistrer">
+            ✔️
+          </button>
+          <button onClick={handleCancelEditConcession} className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400" title="Annuler">
+            ❌
+          </button>
+        </div>
+      </>
+    ) : (
+      <>
+        <span className="flex-1">{concession.name}</span>
+        <div className="flex space-x-2 ml-2">
+          <button onClick={() => handleEditConcession(index, concession)} className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600" title="Modifier">
+            ✏️
+          </button>
+          <button onClick={() => handleDeleteConcession(index)} className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600" title="Supprimer">
+            🗑️
+          </button>
+        </div>
+      </>
+    )}
+  </div>
+))}
               </div>
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700">Ajouter une nouvelle concession</label>

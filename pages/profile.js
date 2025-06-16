@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
-import concessions from '../data/concessions.json';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -18,6 +17,18 @@ export default function Profile() {
     const [showEmailTooltip, setShowEmailTooltip] = useState(false);
     const [showNameTooltip, setShowNameTooltip] = useState(false);
     const router = useRouter();
+    const [concessionList, setConcessionList] = useState([]);
+
+    useEffect(() => {
+        async function fetchConcessions() {
+            const response = await fetch('/api/getConcessions');
+            const result = await response.json();
+            if (response.ok) {
+                setConcessionList(result.concessions); // concessions = [{id, name}]
+            }
+        }
+        fetchConcessions();
+}, []);
 
     const emailTooltipRef = useRef(null);
     const nameTooltipRef = useRef(null);
@@ -189,9 +200,9 @@ async function updateProfile() {
                         className="border p-2 w-full rounded"
                     >
                         <option value="">Sélectionnez une concession</option>
-                        {concessions.map((c) => (
-                            <option key={c} value={c}>
-                                {c}
+                        {concessionList.map((c) => (
+                            <option key={c.id} value={c.name}>
+                                {c.name}
                             </option>
                         ))}
                     </select>

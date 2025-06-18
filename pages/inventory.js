@@ -147,6 +147,14 @@ export default function Inventory() {
           <img src="/logo.png" alt="Logo" className="w-full max-h-40 object-contain" />
         </div>
 
+        {user && user.user_metadata?.concession && (
+          <div className="mt-2 mb-4 w-full max-w-md text-center">
+            <span className="inline-block px-3 py-1 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium shadow">
+              Concession actuelle : <strong>{user.user_metadata.concession}</strong>
+            </span>
+          </div>
+        )}
+
         <div className="bg-white shadow-lg rounded-lg p-6 mt-4 w-full max-w-md">
           <h1 className="text-xl font-bold mb-2">Inventaire voitures</h1>
           <p className="text-gray-600 text-sm mb-2">

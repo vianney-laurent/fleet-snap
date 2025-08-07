@@ -86,7 +86,13 @@ useEffect(() => {
       if (!response.ok) {
         throw new Error(data.error || 'Impossible de récupérer les utilisateurs');
       }
-      setUsers(data.users);
+      // Trier les utilisateurs par ordre alphabétique de nom
+      const sortedUsers = data.users.slice().sort((a, b) => {
+        const nameA = a.user_metadata?.name?.toLowerCase() || a.email.toLowerCase();
+        const nameB = b.user_metadata?.name?.toLowerCase() || b.email.toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      setUsers(sortedUsers);
     } catch (err) {
       setEditErrorMessage(err.message);
     } finally {

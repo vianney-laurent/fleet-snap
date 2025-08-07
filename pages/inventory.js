@@ -115,20 +115,23 @@ export default function Inventory() {
       return;
     }
     setLoading(true);
+    // Récupération du token Supabase
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) {
+      setLoading(false);
+      alert('Session invalide, veuillez vous reconnecter.');
+      return;
+    }
+    const token = session.access_token;
     const formData = new FormData();
-    formData.append('photo', photo);
-    formData.append('email', user.email);
-    formData.append('name', user.user_metadata?.name || 'Nom inconnu');
-    formData.append('concession', user.user_metadata?.concession || 'Concession inconnue');
+    formData.append('photos', photo);
     formData.append('comment', comment);
     formData.append('zone', zone);
-    const response = await fetch(
-      'https://hook.eu2.make.com/ykv6mtd6snp2ypz4g8t4jtqxw3vrujth',
-      {
-        method: 'POST',
-        body: formData,
-      }
-    );
+    const response = await fetch('/api/inventory', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}` },
+      body: formData
+    });
     setLoading(false);
     setShowModal(false);
     if (response.ok) {

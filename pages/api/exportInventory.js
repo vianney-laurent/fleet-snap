@@ -9,10 +9,10 @@ export default async function handler(req, res) {
   try {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Méthode non autorisée' });
 
-    const { email, concession, startDate, endDate, collaborateur } = req.body;
+    const { email, concession, startDate, endDate } = req.body;
 
     // Log des critères reçus (pour debug)
-    console.log({ concession, startDate, endDate, collaborateur });
+    console.log({ concession, startDate, endDate });
 
     // Ajout de zone au select
     let query = supabase
@@ -21,7 +21,6 @@ export default async function handler(req, res) {
 
     // Ajout des filtres dynamiquement
     if (concession) query = query.eq('concession', concession);
-    if (collaborateur) query = query.eq('collaborateur', collaborateur);
     if (startDate) query = query.gte('created_at', startDate);
     if (endDate) query = query.lte('created_at', endDate);
 
@@ -46,7 +45,12 @@ export default async function handler(req, res) {
         row.photo_url || ''
       ])
     ];
-    const csvContent = csvRows.map(r => r.map(v => `"${(v || '').replace(/"/g, '""')}"`).join(',')).join('\n');
+    // Générer le contenu CSV avec BOM UTF-8 pour Excel
+    const bom = '\uFEFF';
+    const csvBody = csvRows
+      .map(r => r.map(v => `"${(v || '').replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const csvContent = bom + csvBody;
     console.log('CSV généré:', csvContent.substring(0, 200) + '...');
 
     // Envoi du mail via Brevo

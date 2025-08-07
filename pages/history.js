@@ -4,8 +4,21 @@ import "react-datepicker/dist/react-datepicker.css";
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
+
 import fr from 'date-fns/locale/fr';
 registerLocale('fr', fr);
+
+// Helper pour formater les champs stockés sous forme de JSON array string
+const formatTextArray = (value) => {
+  if (!value) return '';
+  // Si c'est déjà un tableau
+  if (Array.isArray(value)) return value.join(', ');
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.filter(Boolean).join(', ');
+  } catch {}
+  return value;
+};
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -60,6 +73,11 @@ export default function History() {
   const [exportSuccess, setExportSuccess] = useState(false);
   const [exportError, setExportError] = useState('');
   const [startDate, endDate] = dateRange;
+
+  // Export : concession à sélectionner
+  const [exportConcession, setExportConcession] = useState('');
+  const [exportConcessionOptions, setExportConcessionOptions] = useState([]);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -103,6 +121,43 @@ export default function History() {
 
     fetchUserAndData();
   }, [router, user?.id, currentPage, startDate, endDate]);
+
+useEffect(() => {
+  async function fetchConcessions() {
+    try {
+      const response = await fetch('/api/getConcessions');
+      const json = await response.json();
+      if (response.ok) {
+        // Extract names if concessions are objects
+        const options = Array.isArray(json.concessions)
+          ? json.concessions.map(item => (item && item.name) || item)
+          : [];
+        setExportConcessionOptions(options);
+      } else {
+        console.error('API /api/getConcessions error:', json.error);
+      }
+    } catch (err) {
+      console.error('fetchConcessions fetch error:', err);
+    }
+  }
+  fetchConcessions();
+}, []);
+
+  useEffect(() => {
+    if (exportConcessionOptions.length > 0) {
+      const profileConcession = user?.user_metadata?.concession;
+      const defaultValue = exportConcessionOptions.includes(profileConcession)
+        ? profileConcession
+        : exportConcessionOptions[0];
+      setExportConcession(defaultValue);
+    }
+  }, [exportConcessionOptions, user]);
+
+  useEffect(() => {
+    if (user?.user_metadata?.concession) {
+      setExportConcession(user.user_metadata.concession);
+    }
+  }, [user]);
 
   const handleEditClick = (record) => {
     setEditingRecord(record);
@@ -171,7 +226,7 @@ export default function History() {
       if (end) end.setHours(23,59,59,999);
       const body = {
         email: user.email,
-        concession: records[0]?.concession || 'non_précisée',
+        concession: exportConcession,
         startDate: start ? start.toISOString() : null,
         endDate: end ? end.toISOString() : null,
       };
@@ -257,11 +312,11 @@ export default function History() {
                 />
                 <div>
                   <p className="font-bold text-lg">{record.identifiant}</p>
-                  {record.commentaire && (
-                    <p className="text-sm text-gray-600 italic">{record.commentaire}</p>
+                  {formatTextArray(record.commentaire) && (
+                    <p className="text-sm text-gray-600 italic">{formatTextArray(record.commentaire)}</p>
                   )}
-                  {record.zone && (
-                    <p className="text-sm text-gray-700">{record.zone}</p>
+                  {formatTextArray(record.zone) && (
+                    <p className="text-sm text-gray-700">{formatTextArray(record.zone)}</p>
                   )}
                   <p className="text-sm text-gray-600">{record.collaborateur}</p>
                   <p className="text-sm text-gray-500">{new Date(record.created_at).toLocaleDateString('fr-FR')}</p>
@@ -347,7 +402,20 @@ export default function History() {
   <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
     <div className="bg-white rounded-lg p-6 w-full max-w-md">
       <h2 className="text-xl font-bold mb-4">Exporter l'inventaire</h2>
-      <p className="text-sm mb-4">Choisissez une plage de dates (facultatif) :</p>
+      <div className="mb-4">
+        <label className="block mb-1 font-medium">Concession à exporter</label>
+        <select
+          className="w-full border rounded-lg p-2 mb-2"
+          value={exportConcession}
+          onChange={e => setExportConcession(e.target.value)}
+        >
+          <option value="" disabled>-- Sélectionnez une concession --</option>
+          {exportConcessionOptions.map((c, idx) => (
+            <option key={idx} value={c}>{c}</option>
+          ))}
+        </select>
+      </div>
+      <p className="text-sm mb-2">Choisissez une plage de dates (facultatif) :</p>
       <DatePicker
         selectsRange
         startDate={exportDateRange[0]}
@@ -356,6 +424,7 @@ export default function History() {
         dateFormat="yyyy-MM-dd"
         locale="fr"
         className="w-full mb-4"
+        placeholderText="Sélectionner une plage de dates"
       />
       {exportError && <p className="text-red-500 mb-2">{exportError}</p>}
       {exportSuccess && <p className="text-green-600 mb-2">Email envoyé avec succès !</p>}

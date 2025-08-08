@@ -7,7 +7,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   const { collaborateur, page = 1, limit = 20, startDate, endDate } = req.query;
 
   if (!collaborateur) {
@@ -35,7 +35,6 @@ export default async function handler(req, res) {
   const { data, error, count } = await query;
 
   if (error) {
-    console.error('Erreur Supabase:', error);
     return res.status(500).json({ error: 'Erreur Supabase' });
   }
 
@@ -46,3 +45,5 @@ export default async function handler(req, res) {
     currentPage,
   });
 }
+
+export default handler;

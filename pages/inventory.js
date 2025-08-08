@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
+import { log } from 'next-axiom';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -24,10 +25,12 @@ export default function Inventory() {
   useEffect(() => {
     async function fetchUser() {
       const { data } = await supabase.auth.getUser();
+      log.info('Utilisateur récupéré depuis Supabase', { user: data.user });
       if (data?.user) {
         setUser(data.user);
       } else {
         router.push('/');
+        log.warn('Utilisateur non authentifié, redirection vers login');
       }
     }
     fetchUser();
@@ -71,11 +74,13 @@ export default function Inventory() {
 
   // Ajout d'une nouvelle zone dans Supabase
   const handleAddZone = async () => {
+    log.info('handleAddZone démarré', { newZone });
     const trimmedZone = newZone.trim();
     if (
       !trimmedZone ||
       zones.map(z => z.toLowerCase()).includes(trimmedZone.toLowerCase())
     ) {
+      log.warn('Nouvelle zone invalide ou déjà existante', { newZone: trimmedZone });
       alert("Cette zone existe déjà ou le nom est vide.");
       return;
     }
@@ -95,7 +100,9 @@ export default function Inventory() {
       setZone(trimmedZone);
       setNewZone('');
       setShowZoneInput(false);
+      log.info('Nouvelle zone ajoutée', { newZone: trimmedZone });
     } else {
+      log.error('Erreur création de zone Supabase', { error });
       alert("Erreur lors de la création de la zone.");
     }
   };
@@ -103,14 +110,17 @@ export default function Inventory() {
   // Soumission du formulaire
   const handleSubmit = async () => {
     if (!photo) {
+      log.warn('handleSubmit: photo manquante');
       alert('Veuillez ajouter une photo.');
       return;
     }
     if (!user) {
+      log.warn('handleSubmit: utilisateur manquant');
       alert('Utilisateur non chargé, veuillez vous reconnecter.');
       return;
     }
     if (!zone) {
+      log.warn('handleSubmit: zone non sélectionnée');
       alert('Merci de sélectionner une zone avant de poursuivre.');
       return;
     }
@@ -118,6 +128,7 @@ export default function Inventory() {
     // Récupération du token Supabase
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {
+      log.error('handleSubmit: session invalide', { sessionError });
       setLoading(false);
       alert('Session invalide, veuillez vous reconnecter.');
       return;
@@ -125,7 +136,9 @@ export default function Inventory() {
     const token = session.access_token;
     const formData = new FormData();
     formData.append('photos', photo);
-    formData.append('comment', comment);
+    if (comment) {
+      formData.append('comment', comment);
+    }
     formData.append('zone', zone);
     const response = await fetch('/api/inventory', {
       method: 'POST',
@@ -135,10 +148,12 @@ export default function Inventory() {
     setLoading(false);
     setShowModal(false);
     if (response.ok) {
+      log.info('Inventaire envoyé avec succès', { status: response.status });
       alert('Photo envoyée avec succès !');
       setPhoto(null);
       setComment('');
     } else {
+      log.error('Erreur envoi inventaire', { status: response.status });
       alert("Erreur lors de l’envoi.");
     }
   };

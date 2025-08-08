@@ -13,6 +13,7 @@ export default function Inventory() {
   const [photo, setPhoto] = useState(null);
   const [comment, setComment] = useState('');
   const [showModal, setShowModal] = useState(false);
+  const [submittingAction, setSubmittingAction] = useState(null);
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(false);
   const [zone, setZone] = useState('');
@@ -108,7 +109,8 @@ export default function Inventory() {
   };
 
   // Soumission du formulaire
-  const handleSubmit = async () => {
+  const handleSubmit = async (action) => {
+    setSubmittingAction(action);
     if (!photo) {
       log.warn('handleSubmit: photo manquante');
       alert('Veuillez ajouter une photo.');
@@ -147,6 +149,7 @@ export default function Inventory() {
     });
     setLoading(false);
     setShowModal(false);
+    setSubmittingAction(null);
     if (response.ok) {
       log.info('Inventaire envoyé avec succès', { status: response.status });
       alert('Photo envoyée avec succès !');
@@ -173,12 +176,12 @@ export default function Inventory() {
           </div>
         )}
 
-        <div className="bg-white shadow-lg rounded-lg p-6 mt-4 w-full max-w-md">
-          <h1 className="text-xl font-bold mb-2">Inventaire voitures</h1>
-          <p className="text-gray-600 text-sm mb-2">
+        <div className="bg-white shadow-md rounded-md p-6 mt-4 w-full max-w-md space-y-4">
+          <h1 className="text-2xl font-semibold">Inventaire voitures</h1>
+          <p className="text-gray-600 text-sm">
             Merci de prendre en photo la plaque d'immatriculation ou le VIN du véhicule.
           </p>
-          <p className="text-gray-500 text-xs mb-4">
+          <p className="text-gray-600 text-sm">
             Attention à limiter les reflets pour le traitement automatique de la photo.
           </p>
 
@@ -189,7 +192,7 @@ export default function Inventory() {
             </label>
             <div className="flex gap-2">
               <select
-                className="flex-1 border rounded-lg p-2"
+                className="flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                 value={zone}
                 onChange={e => setZone(e.target.value)}
               >
@@ -207,7 +210,7 @@ export default function Inventory() {
             {showZoneInput && (
               <div className="flex gap-2 mt-2">
                 <input
-                  className="flex-1 border rounded-lg p-2"
+                  className="flex-1 border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                   placeholder="Nouvelle zone"
                   value={newZone}
                   onChange={e => setNewZone(e.target.value)}
@@ -232,8 +235,8 @@ export default function Inventory() {
           </div>
 
           {/* Upload Photo */}
-          <label className="block text-sm font-medium mb-2">Photo *</label>
-          <div className="border border-gray-300 rounded-lg p-4 flex flex-col items-center justify-center text-gray-500 cursor-pointer">
+          <label className="block text-sm font-medium">Photo *</label>
+          <div className="border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center text-gray-500 cursor-pointer hover:border-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300">
             <input
               type="file"
               accept="image/*"
@@ -254,46 +257,77 @@ export default function Inventory() {
           {/* Boutons d'envoi */}
           <div className="mt-6 flex gap-4">
             <button
-              onClick={handleSubmit}
+              onClick={() => handleSubmit('noComment')}
               disabled={loading}
-              className="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg flex items-center justify-center gap-2"
+              className="flex-1 bg-green-500 hover:bg-green-600 text-white py-2 rounded-full flex items-center justify-center gap-2 font-medium text-sm shadow-md transition-shadow transform hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
             >
-              {loading ? 'Envoi...' : 'Envoyer sans commentaire'}
+              {loading && submittingAction === 'noComment' ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                  </svg>
+                  Envoi...
+                </>
+              ) : (
+                'Envoyer sans commentaire'
+              )}
             </button>
             <button
               onClick={() => setShowModal(true)}
               disabled={loading}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg flex items-center justify-center gap-2"
+              className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-full flex items-center justify-center gap-2 font-medium text-sm shadow-md transition-shadow transform hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             >
-              {loading ? 'Envoi...' : 'Envoyer avec commentaire'}
+              {loading && submittingAction === 'withComment' ? (
+                <>
+                  <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                  </svg>
+                  Envoi...
+                </>
+              ) : (
+                'Envoyer avec commentaire'
+              )}
             </button>
           </div>
         </div>
 
         {/* Modal pour le commentaire */}
         {showModal && (
-          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-            <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-md">
-              <h2 className="text-lg font-semibold mb-4">Ajouter un commentaire</h2>
+          <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 transition-opacity duration-200 ease-in-out">
+            <div className="bg-white rounded-md shadow-md p-6 w-full max-w-md space-y-4 transition-transform duration-200 ease-in-out transform">
+              <h2 className="text-lg font-semibold">Ajouter un commentaire</h2>
               <textarea
                 rows={4}
                 value={comment}
                 onChange={e => setComment(e.target.value)}
-                className="w-full border border-gray-300 rounded-lg p-2 mb-4"
+                className="w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                 placeholder="Entrez votre commentaire ici..."
               />
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                 >
                   Fermer
                 </button>
                 <button
-                  onClick={handleSubmit}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  onClick={() => handleSubmit('withComment')}
+                  disabled={loading && submittingAction === 'withComment'}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 transition-transform focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 flex items-center justify-center gap-2"
                 >
-                  Valider et envoyer
+                  {loading && submittingAction === 'withComment' ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 mr-2 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"/>
+                      </svg>
+                      Envoi...
+                    </>
+                  ) : (
+                    'Valider et envoyer'
+                  )}
                 </button>
               </div>
             </div>

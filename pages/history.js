@@ -34,7 +34,7 @@ const CustomDateInput = forwardRef(({ value, onClick, clearSelection }, ref) => 
       value={value}
       readOnly
       ref={ref}
-      className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+      className="w-full pl-10 pr-10 py-2 border border-gray-300 rounded-md shadow-md focus:outline-none focus:ring-2 focus:ring-blue-300"
       placeholder="Sélectionner une plage de dates"
     />
     <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -280,26 +280,26 @@ useEffect(() => {
 
   return (
     <Layout>
-      <div className="p-4 max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-4 text-center">Mon historique d'inventaire</h1>
+      <div className="p-4 max-w-4xl mx-auto space-y-6">
+        <h1 className="text-2xl font-semibold text-center">Mon historique d'inventaire</h1>
 
-       <div className="flex justify-between items-center mb-6">
-        <DatePicker
-          selectsRange
-          startDate={startDate}
-          endDate={endDate}
-          onChange={(update) => setDateRange(update)}
-          dateFormat="yyyy-MM-dd"
-          locale="fr"
-          customInput={<CustomDateInput clearSelection={clearDateRange} />}
-        />
-        <button
-          onClick={() => setExportModalOpen(true)}
-          className="ml-4 px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-        >
-          📤 Exporter
-        </button>
-      </div>
+        <div className="flex justify-between items-center">
+          <DatePicker
+            selectsRange
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(update) => setDateRange(update)}
+            dateFormat="yyyy-MM-dd"
+            locale="fr"
+            customInput={<CustomDateInput clearSelection={clearDateRange} />}
+          />
+          <button
+            onClick={() => setExportModalOpen(true)}
+            className="ml-4 px-4 py-2 bg-green-500 hover:bg-green-600 text-white font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+          >
+            📤 Exporter
+          </button>
+        </div>
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
 
@@ -307,7 +307,7 @@ useEffect(() => {
           {records.map((record) => (
             <div
               key={record.id}
-              className="flex items-center justify-between bg-white shadow rounded-lg p-4 border border-gray-200"
+              className="flex items-center justify-between bg-white shadow-md rounded-md p-4 border border-gray-200"
             >
               <div className="flex items-center space-x-4 min-w-0">
                 <img
@@ -331,12 +331,12 @@ useEffect(() => {
               <div className="flex flex-col space-y-2 ml-4">
                 <button
                   onClick={() => handleEditClick(record)}
-                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                  className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                   title="Modifier"
                 >✏️</button>
                 <button
                   onClick={() => handleDeleteClick(record)}
-                  className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+                  className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                   title="Supprimer"
                 >🗑️</button>
               </div>
@@ -346,21 +346,21 @@ useEffect(() => {
 
         {/* Modale d'édition */}
         {showModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-              <h2 className="text-xl font-bold mb-4">Modifier l’enregistrement</h2>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 transition-opacity duration-200 ease-in-out">
+            <div className="bg-white rounded-md shadow-md p-6 w-full max-w-sm space-y-4 transition-transform duration-200 ease-in-out transform">
+              <h2 className="text-xl font-semibold">Modifier l’enregistrement</h2>
 
-              <label className="block mb-2 font-medium">Plaque / VIN</label>
+              <label className="block font-medium">Plaque / VIN</label>
               <input
-                className="border p-2 w-full rounded mb-4"
+                className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                 value={newPlateVin}
                 onChange={(e) => setNewPlateVin(e.target.value)}
                 placeholder="Nouvelle plaque / VIN"
               />
 
-              <label className="block mb-2 font-medium">Commentaire</label>
+              <label className="block font-medium">Commentaire</label>
               <textarea
-                className="border p-2 w-full rounded mb-4"
+                className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                 rows={3}
                 value={newCommentaire}
                 onChange={(e) => setNewCommentaire(e.target.value)}
@@ -368,81 +368,99 @@ useEffect(() => {
               />
 
               <div className="flex justify-between">
-                <button onClick={handleCloseModal} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Annuler</button>
-                <button onClick={handleSave} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Enregistrer</button>
+                <button
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >Annuler</button>
+                <button
+                  onClick={handleSave}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                >Enregistrer</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* Modale suppression et pagination identique à avant */}
-
+        {/* Modale suppression */}
         {showDeleteModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-            <div className="bg-white rounded-lg p-6 w-full max-w-sm">
-              <h2 className="text-xl font-bold mb-4">Confirmer la suppression</h2>
-              <p className="mb-4">Voulez-vous vraiment supprimer cet enregistrement ?</p>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 transition-opacity duration-200 ease-in-out">
+            <div className="bg-white rounded-md shadow-md p-6 w-full max-w-sm space-y-4 transition-transform duration-200 ease-in-out transform">
+              <h2 className="text-xl font-semibold">Confirmer la suppression</h2>
+              <p>Voulez-vous vraiment supprimer cet enregistrement ?</p>
               <div className="flex justify-between">
-                <button onClick={handleCloseDeleteModal} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Annuler</button>
-                <button onClick={handleDeleteConfirm} className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">Supprimer</button>
+                <button
+                  onClick={handleCloseDeleteModal}
+                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >Annuler</button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                >Supprimer</button>
               </div>
             </div>
           </div>
         )}
 
-        <div className="flex justify-between items-center mt-6">
+        <div className="flex justify-between items-center">
           <button
             disabled={currentPage === 1}
             onClick={() => setCurrentPage(currentPage - 1)}
-            className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50"
+            className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
           >Précédent</button>
           <span>Page {currentPage} sur {totalPages}</span>
           <button
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage(currentPage + 1)}
-            className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400 disabled:opacity-50"
+            className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 disabled:opacity-50"
           >Suivant</button>
         </div>
 
         {exportModalOpen && (
-  <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4">
-    <div className="bg-white rounded-lg p-6 w-full max-w-md">
-      <h2 className="text-xl font-bold mb-4">Exporter l'inventaire</h2>
-      <div className="mb-4">
-        <label className="block mb-1 font-medium">Concession à exporter</label>
-        <select
-          className="w-full border rounded-lg p-2 mb-2"
-          value={exportConcession}
-          onChange={e => setExportConcession(e.target.value)}
-        >
-          <option value="" disabled>-- Sélectionnez une concession --</option>
-          {exportConcessionOptions.map((c, idx) => (
-            <option key={idx} value={c}>{c}</option>
-          ))}
-        </select>
-      </div>
-      <p className="text-sm mb-2">Choisissez une plage de dates (facultatif) :</p>
-      <DatePicker
-        selectsRange
-        startDate={exportDateRange[0]}
-        endDate={exportDateRange[1]}
-        onChange={(update) => setExportDateRange(update)}
-        dateFormat="yyyy-MM-dd"
-        locale="fr"
-        className="w-full mb-4"
-        placeholderText="Sélectionner une plage de dates"
-      />
-      {exportError && <p className="text-red-500 mb-2">{exportError}</p>}
-      {exportSuccess && <p className="text-green-600 mb-2">Email envoyé avec succès !</p>}
-      <div className="flex justify-between mt-4">
-        <button onClick={() => setExportModalOpen(false)} className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400">Annuler</button>
-        <button onClick={handleExport} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" disabled={exportLoading}>
-          {exportLoading ? 'Envoi...' : 'Envoyer par e-mail'}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 p-4 transition-opacity duration-200 ease-in-out">
+            <div className="bg-white rounded-md shadow-md p-6 w-full max-w-md space-y-4 transition-transform duration-200 ease-in-out transform">
+              <h2 className="text-xl font-semibold">Exporter l'inventaire</h2>
+              <div>
+                <label className="block font-medium">Concession à exporter</label>
+                <select
+                  className="w-full border border-gray-300 rounded-md p-2 mb-2"
+                  value={exportConcession}
+                  onChange={e => setExportConcession(e.target.value)}
+                >
+                  <option value="" disabled>-- Sélectionnez une concession --</option>
+                  {exportConcessionOptions.map((c, idx) => (
+                    <option key={idx} value={c}>{c}</option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-sm">Choisissez une plage de dates (facultatif) :</p>
+              <DatePicker
+                selectsRange
+                startDate={exportDateRange[0]}
+                endDate={exportDateRange[1]}
+                onChange={(update) => setExportDateRange(update)}
+                dateFormat="yyyy-MM-dd"
+                locale="fr"
+                className="w-full mb-4"
+                placeholderText="Sélectionner une plage de dates"
+              />
+              {exportError && <p className="text-red-500">{exportError}</p>}
+              {exportSuccess && <p className="text-green-600">Email envoyé avec succès !</p>}
+              <div className="flex justify-between">
+                <button
+                  onClick={() => setExportModalOpen(false)}
+                  className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                >Annuler</button>
+                <button
+                  onClick={handleExport}
+                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  disabled={exportLoading}
+                >
+                  {exportLoading ? 'Envoi...' : 'Envoyer par e-mail'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {enlargedPhoto && (
           <div
@@ -455,7 +473,7 @@ useEffect(() => {
             >
               <button
                 onClick={handleClosePhotoModal}
-                className="absolute top-2 right-2 text-white text-2xl leading-none focus:outline-none"
+                className="absolute top-2 right-2 text-white text-2xl leading-none focus:outline-none focus:ring-2 focus:ring-white"
                 aria-label="Fermer"
               >
                 &times;
@@ -463,7 +481,7 @@ useEffect(() => {
               <img
                 src={enlargedPhoto}
                 alt="Photo agrandie"
-                className="object-contain max-w-full max-h-[90vh] rounded-lg shadow-lg"
+                className="object-contain max-w-full max-h-[90vh] rounded-md shadow-md"
               />
             </div>
           </div>

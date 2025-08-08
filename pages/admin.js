@@ -273,15 +273,18 @@ const handleDeleteConcession = async (index) => {
   if (!accessGranted) {
     return (
       <Layout>
-        <div className="p-6 max-w-md mx-auto bg-white rounded-lg shadow-md mt-12">
-          <h2 className="text-xl font-bold mb-4">Accès administrateur</h2>
+        <div className="p-6 max-w-md mx-auto bg-white rounded-md shadow-md mt-12 space-y-4">
+          <h2 className="text-2xl font-semibold">Accès administrateur</h2>
           <input
             type="password"
-            className="w-full p-2 border rounded mb-4"
+            className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
             value={adminPasswordInput}
             onChange={(e) => setAdminPasswordInput(e.target.value)}
           />
-          <button onClick={handlePasswordSubmit} className="bg-blue-600 text-white py-2 px-4 rounded w-full">
+          <button
+            onClick={handlePasswordSubmit}
+            className="bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm p-2 w-full rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
             Valider
           </button>
         </div>
@@ -291,8 +294,8 @@ const handleDeleteConcession = async (index) => {
 
   return (
     <Layout>
-      <div className="p-6 max-w-2xl mx-auto">
-        <h1 className="text-2xl font-bold mb-4">Administration</h1>
+      <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <h1 className="text-2xl font-semibold">Administration</h1>
 
         <div className="border-b border-gray-200">
           <nav className="flex space-x-4">
@@ -321,39 +324,64 @@ const handleDeleteConcession = async (index) => {
         <div className="mt-6 space-y-6">
           {activeTab === 'createUser' && (
             <>
-              <h2 className="text-xl font-bold">Créer un utilisateur</h2>
-              <input className="w-full p-2 border rounded" placeholder="Email" value={createEmail} onChange={(e) => setCreateEmail(e.target.value)} />
-              <input className="w-full p-2 border rounded" placeholder="Nom complet" value={createFullName} onChange={(e) => setCreateFullName(e.target.value)} />
-              <input className="w-full p-2 border rounded" placeholder="Mot de passe" type="password" value={createPassword} onChange={(e) => setCreatePassword(e.target.value)} />
-              <select className="w-full p-2 border rounded" value={createConcession} onChange={(e) => setCreateConcession(e.target.value)}>
+              <h2 className="text-xl font-semibold">Créer un utilisateur</h2>
+              <input
+                className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
+                placeholder="Email"
+                value={createEmail}
+                onChange={(e) => setCreateEmail(e.target.value)}
+              />
+              <input
+                className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
+                placeholder="Nom complet"
+                value={createFullName}
+                onChange={(e) => setCreateFullName(e.target.value)}
+              />
+              <input
+                className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
+                placeholder="Mot de passe"
+                type="password"
+                value={createPassword}
+                onChange={(e) => setCreatePassword(e.target.value)}
+              />
+              <select
+                className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
+                value={createConcession}
+                onChange={(e) => setCreateConcession(e.target.value)}
+              >
                 <option value="">Sélectionnez une concession</option>
                 {concessionList.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
               </select>
-              <button onClick={handleCreateUser} className="bg-blue-600 text-white px-4 py-2 rounded mt-2">Créer l’utilisateur</button>
+              <button
+                onClick={handleCreateUser}
+                className="bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm p-2 w-full rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                Créer l’utilisateur
+              </button>
             </>
           )}
 
           {activeTab === 'editUser' && (
             <>
-              <h2 className="text-xl font-bold">Modifier un utilisateur</h2>
+              <h2 className="text-xl font-semibold">Modifier un utilisateur</h2>
               {loadingUsers ? <p>Chargement...</p> : (
                 <div className="grid grid-cols-1 gap-4">
                   {users.map((user) => (
-                    <div 
-                      key={user.id} 
-                      className={`flex items-center justify-between bg-white p-4 border rounded shadow-sm cursor-pointer hover:bg-gray-50 ${selectedUser?.id === user.id ? 'border-blue-600' : ''}`}
+                    <div
+                      key={user.id}
+                      className={`flex items-center justify-between bg-white p-4 border rounded-md shadow-md cursor-pointer hover:bg-gray-50 ${selectedUser?.id === user.id ? 'border-blue-600' : ''}`}
                       onClick={() => handleSelectUser(user)}
                     >
                       <div>
                         <p className="font-bold">{user.user_metadata?.name}</p>
                         <p className="text-sm text-gray-600">{user.email}</p>
                       </div>
-                      <button 
+                      <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleSelectUser(user);
                         }}
-                        className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+                        className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                         title="Modifier"
                       >
                         ✏️
@@ -365,9 +393,14 @@ const handleDeleteConcession = async (index) => {
               {selectedUser && (
                 <>
                   <div className="mt-4 space-y-2">
-                    <input className="w-full p-2 border rounded" value={editFullName} onChange={(e) => setEditFullName(e.target.value)} placeholder="Nom complet" />
+                    <input
+                      className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
+                      value={editFullName}
+                      onChange={(e) => setEditFullName(e.target.value)}
+                      placeholder="Nom complet"
+                    />
                     <select
-                      className="w-full p-2 border rounded"
+                      className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                       value={editConcession}
                       onChange={(e) => setEditConcession(e.target.value)}
                     >
@@ -379,8 +412,18 @@ const handleDeleteConcession = async (index) => {
                       ))}
                     </select>
                   </div>
-                  <button onClick={handleUpdateUser} className="bg-blue-600 text-white py-2 px-4 rounded w-full mt-2">Mettre à jour</button>
-                  <button onClick={handleSendPasswordReset} className="bg-blue-600 text-white py-2 px-4 rounded w-full mt-2">Réinitialiser mot de passe</button>
+                  <button
+                    onClick={handleUpdateUser}
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm p-2 w-full rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Mettre à jour
+                  </button>
+                  <button
+                    onClick={handleSendPasswordReset}
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm p-2 w-full rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                  >
+                    Réinitialiser mot de passe
+                  </button>
                 </>
               )}
             </>
@@ -388,56 +431,72 @@ const handleDeleteConcession = async (index) => {
 
           {activeTab === 'settings' && (
             <div className="space-y-6">
-              <h2 className="text-xl font-bold">Réglages du site</h2>
+              <h2 className="text-xl font-semibold">Réglages du site</h2>
               <h3 className="text-lg font-semibold">Gestion des concessions</h3>
               <div className="grid grid-cols-1 gap-4">
                 {concessionList.map((concession, index) => (
-  <div key={concession.id} className="flex items-center justify-between bg-white p-4 border rounded shadow-sm">
-    {editingConcessionIndex === index ? (
-      <>
-        <input
-          type="text"
-          value={editingConcessionValue}
-          onChange={(e) => setEditingConcessionValue(e.target.value)}
-          className="flex-1 p-2 border rounded"
-        />
-        <div className="flex space-x-2 ml-2">
-          <button onClick={handleUpdateConcession} className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600" title="Enregistrer">
-            ✔️
-          </button>
-          <button onClick={handleCancelEditConcession} className="px-3 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400" title="Annuler">
-            ❌
-          </button>
-        </div>
-      </>
-    ) : (
-      <>
-        <span className="flex-1">{concession.name}</span>
-        <div className="flex space-x-2 ml-2">
-          <button onClick={() => handleEditConcession(index, concession)} className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600" title="Modifier">
-            ✏️
-          </button>
-          <button onClick={() => handleDeleteConcession(index)} className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600" title="Supprimer">
-            🗑️
-          </button>
-        </div>
-      </>
-    )}
-  </div>
-))}
+                  <div key={concession.id} className="flex items-center justify-between bg-white p-4 border rounded-md shadow-md">
+                    {editingConcessionIndex === index ? (
+                      <>
+                        <input
+                          type="text"
+                          value={editingConcessionValue}
+                          onChange={(e) => setEditingConcessionValue(e.target.value)}
+                          className="flex-1 border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
+                        />
+                        <div className="flex space-x-2 ml-2">
+                          <button
+                            onClick={handleUpdateConcession}
+                            className="px-3 py-1 bg-green-500 hover:bg-green-600 text-white font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                            title="Enregistrer"
+                          >
+                            ✔️
+                          </button>
+                          <button
+                            onClick={handleCancelEditConcession}
+                            className="px-3 py-1 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+                            title="Annuler"
+                          >
+                            ❌
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1">{concession.name}</span>
+                        <div className="flex space-x-2 ml-2">
+                          <button
+                            onClick={() => handleEditConcession(index, concession)}
+                            className="px-3 py-1 bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            title="Modifier"
+                          >
+                            ✏️
+                          </button>
+                          <button
+                            onClick={() => handleDeleteConcession(index)}
+                            className="px-3 py-1 bg-red-500 hover:bg-red-600 text-white font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                            title="Supprimer"
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                ))}
               </div>
               <div className="mt-4">
                 <label className="block text-sm font-medium text-gray-700">Ajouter une nouvelle concession</label>
-                <input 
+                <input
                   type="text"
                   value={newConcession}
                   onChange={(e) => setNewConcession(e.target.value)}
-                  className="w-full p-2 border rounded mt-1"
+                  className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                   placeholder="Nom de la concession"
                 />
-                <button 
+                <button
                   onClick={handleAddConcession}
-                  className="mt-2 bg-blue-600 text-white py-2 px-4 rounded w-full"
+                  className="bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm p-2 w-full rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                   Ajouter
                 </button>

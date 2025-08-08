@@ -146,7 +146,7 @@ async function updateProfile() {
         show && (
             <div
                 ref={tooltipRef}
-                className="absolute left-6 top-6 mt-2 bg-gray-800 text-white text-xs rounded p-3 shadow-lg z-50 max-w-xs"
+                className="absolute left-6 top-6 mt-2 bg-gray-800 text-white text-xs rounded-md p-3 shadow-md z-50 max-w-xs"
                 style={{ transform: 'translateX(-20px)' }} // Décalage pour ne pas recouvrir le "i"
             >
                 <div className="flex justify-between items-center">
@@ -165,7 +165,7 @@ async function updateProfile() {
     return (
         <Layout>
             <div className="p-6 space-y-6">
-                <h1 className="text-xl font-bold">Profil utilisateur</h1>
+                <h1 className="text-2xl font-semibold">Profil utilisateur</h1>
 
                 {/* Email en lecture seule avec tooltip */}
                 <div className="relative">
@@ -175,7 +175,7 @@ async function updateProfile() {
                             type="email"
                             value={email}
                             readOnly
-                            className="border p-2 w-full rounded bg-gray-100 cursor-not-allowed"
+                            className="border border-gray-300 rounded-md p-2 w-full bg-gray-100 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                         />
                         <div
                             className="cursor-pointer text-gray-500"
@@ -200,7 +200,7 @@ async function updateProfile() {
                             type="text"
                             value={name}
                             readOnly
-                            className="border p-2 w-full rounded bg-gray-100 cursor-not-allowed"
+                            className="border border-gray-300 rounded-md p-2 w-full bg-gray-100 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                         />
                         <div
                             className="cursor-pointer text-gray-500"
@@ -223,7 +223,7 @@ async function updateProfile() {
                     <select
                         value={concession}
                         onChange={(e) => setConcession(e.target.value)}
-                        className="border p-2 w-full rounded"
+                        className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                     >
                         <option value="">Sélectionnez une concession</option>
                         {concessionList.map((c) => (
@@ -236,7 +236,7 @@ async function updateProfile() {
 
                 <button
                     onClick={updateProfile}
-                    className="bg-blue-500 text-white p-2 w-full rounded"
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm p-2 w-full rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                     Mettre à jour le profil
                 </button>
@@ -248,13 +248,13 @@ async function updateProfile() {
                         type="password"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
-                        className="border p-2 w-full rounded"
+                        className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                     />
                 </div>
 
                 <button
                     onClick={updatePassword}
-                    className="bg-blue-500 text-white p-2 w-full rounded"
+                    className="bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm p-2 w-full rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
                 >
                     Changer le mot de passe
                 </button>

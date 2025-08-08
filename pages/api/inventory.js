@@ -75,7 +75,7 @@ async function handler(req, res) {
         inlineData: { mimeType: file.mimetype, data: base64Image }
       };
       const textPart = {
-        text: 'Extrait uniquement la plaque d’immatriculation ou le VIN (17 caractères alphanumériques, sans les lettres I, O, Q). Si aucune détection, renvoyez NO_DETECTION.'
+        text: 'Extrait uniquement la plaque d’immatriculation ou le VIN (17 caractères alphanumériques, il ne peut pas y avoir de lettres I, O, Q. Les O sont forcément des 0). Si aucune détection, renvoyez NO_DETECTION.'
       };
       const ocrResponse = await ai.models.generateContent({
         model: 'gemini-2.0-flash',

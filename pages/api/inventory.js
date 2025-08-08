@@ -18,7 +18,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 // Nom du bucket Supabase Storage défini en .env.local (défaut: 'photos')
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'photos';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: 'Méthode non autorisée' });
@@ -33,6 +33,8 @@ export default async function handler(req, res) {
         else resolve({ fields, files });
       });
     });
+
+    const fileCount = Array.isArray(files.photos) ? files.photos.length : 1;
 
     // 2. Authentification via token Supabase
     const authHeader = req.headers.authorization;
@@ -105,7 +107,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true, records: insertData });
   } catch (err) {
-    console.error('API Inventory Error:', err);
     return res.status(500).json({ error: err.message });
   }
 }
+
+export default handler;

@@ -4,6 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
+import { log } from 'next-axiom';
 
 import fr from 'date-fns/locale/fr';
 registerLocale('fr', fr);
@@ -83,7 +84,9 @@ export default function History() {
   useEffect(() => {
     async function fetchUserAndData() {
       const { data: userData } = await supabase.auth.getUser();
+      log.info('Utilisateur récupéré dans History', { user: userData.user });
       if (!userData.user) {
+        log.warn('Utilisateur non authentifié in History, redirection vers login');
         router.push('/');
         return;
       }
@@ -106,13 +109,16 @@ export default function History() {
           queryParams.append('endDate', endDate.toISOString().split('T')[0]);
         }
 
+        log.debug('Appel API /api/history', { url: `/api/history?${queryParams.toString()}` });
         const response = await fetch(`/api/history?${queryParams.toString()}`);
         if (!response.ok) throw new Error(`Erreur API: ${response.status}`);
 
         const { records, totalPages } = await response.json();
+        log.info('History records reçus', { recordCount: records.length, totalPages });
         setRecords(records || []);
         setTotalPages(totalPages);
       } catch (err) {
+        log.error('Error fetching history', { message: err.message, stack: err.stack });
         setError('Impossible de récupérer les données.');
       } finally {
         setLoading(false);
@@ -134,10 +140,10 @@ useEffect(() => {
           : [];
         setExportConcessionOptions(options);
       } else {
-        console.error('API /api/getConcessions error:', json.error);
+        log.error('fetchConcessions error', { error: json?.error });
       }
     } catch (err) {
-      console.error('fetchConcessions fetch error:', err);
+      log.error('fetchConcessions error', { error: err });
     }
   }
   fetchConcessions();
@@ -303,15 +309,15 @@ useEffect(() => {
               key={record.id}
               className="flex items-center justify-between bg-white shadow rounded-lg p-4 border border-gray-200"
             >
-              <div className="flex items-center space-x-4">
+              <div className="flex items-center space-x-4 min-w-0">
                 <img
                   src={record.photo_url || ''}
                   alt="Photo véhicule"
                   className="w-16 h-16 object-cover rounded cursor-pointer"
                   onClick={() => handlePhotoClick(record.photo_url)}
                 />
-                <div>
-                  <p className="font-bold text-lg">{record.identifiant}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-lg truncate">{record.identifiant}</p>
                   {formatTextArray(record.commentaire) && (
                     <p className="text-sm text-gray-600 italic">{formatTextArray(record.commentaire)}</p>
                   )}
@@ -437,6 +443,31 @@ useEffect(() => {
     </div>
   </div>
 )}
+
+        {enlargedPhoto && (
+          <div
+            className="fixed inset-0 bg-black bg-opacity-75 flex justify-center items-center z-50 p-4"
+            onClick={handleClosePhotoModal}
+          >
+            <div
+              className="relative max-w-full max-h-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={handleClosePhotoModal}
+                className="absolute top-2 right-2 text-white text-2xl leading-none focus:outline-none"
+                aria-label="Fermer"
+              >
+                &times;
+              </button>
+              <img
+                src={enlargedPhoto}
+                alt="Photo agrandie"
+                className="object-contain max-w-full max-h-[90vh] rounded-lg shadow-lg"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </Layout>
   );

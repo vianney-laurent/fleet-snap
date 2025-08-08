@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
+import { log } from 'next-axiom';
 
 const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -21,14 +22,22 @@ export default function Profile() {
 
     useEffect(() => {
         async function fetchConcessions() {
-            const response = await fetch('/api/getConcessions');
-            const result = await response.json();
-            if (response.ok) {
-                setConcessionList(result.concessions); // concessions = [{id, name}]
+            log.info('fetchConcessions Profile démarré');
+            try {
+                const response = await fetch('/api/getConcessions');
+                const result = await response.json();
+                if (response.ok) {
+                    setConcessionList(result.concessions); // concessions = [{id, name}]
+                    log.info('Concessions chargées', { count: result.concessions.length });
+                } else {
+                    log.error('fetchConcessions Profile error', { error: result.error });
+                }
+            } catch (err) {
+                log.error('fetchConcessions Profile exception', { message: err.message, stack: err.stack });
             }
         }
         fetchConcessions();
-}, []);
+    }, []);
 
     const emailTooltipRef = useRef(null);
     const nameTooltipRef = useRef(null);
@@ -36,8 +45,10 @@ export default function Profile() {
     useEffect(() => {
         async function fetchUser() {
             const { data: userData, error } = await supabase.auth.getUser();
+            log.info('Utilisateur récupéré dans Profile', { user: userData.user });
 
             if (error || !userData?.user) {
+                log.warn('Utilisateur non authentifié Profile, redirection');
                 router.push('/?reason=session-expired');
                 return;
             }
@@ -46,6 +57,11 @@ export default function Profile() {
             setEmail(userData.user.email);
             setName(userData.user.user_metadata?.name || '');
             setConcession(userData.user.user_metadata?.concession || '');
+            log.debug('Profile initialisé', {
+              email: userData.user.email,
+              name: userData.user.user_metadata?.name,
+              concession: userData.user.user_metadata?.concession
+            });
         }
 
         fetchUser();
@@ -78,7 +94,9 @@ export default function Profile() {
     }, []);
 
 async function updateProfile() {
+    log.info('updateProfile démarré', { userId: user?.id, name, concession });
     if (!user?.id) {
+        log.warn('updateProfile: utilisateur non identifié');
         alert("Utilisateur non identifié.");
         return;
     }
@@ -90,16 +108,20 @@ async function updateProfile() {
 
     if (response.ok) {
         alert("Profil mis à jour ! Pour que la modification soit prise en compte, vous allez être déconnecté(e) et devrez vous reconnecter.");
+        log.info('Profil mis à jour avec succès', { status: response.status });
         await supabase.auth.signOut();
         router.push('/?reason=refresh-required');
     } else {
         const errorData = await response.json();
+        log.error('Erreur mise à jour profil', { error: errorData.error });
         alert(`Erreur : ${errorData.error || 'Impossible de mettre à jour le profil'}`);
     }
 }
 
     async function updatePassword() {
+        log.info('updatePassword démarré');
         if (!newPassword) {
+            log.warn('updatePassword: mot de passe vide');
             alert('Veuillez renseigner un nouveau mot de passe.');
             return;
         }
@@ -107,7 +129,11 @@ async function updateProfile() {
         const { error } = await supabase.auth.updateUser({
             password: newPassword
         });
-
+        if (error) {
+            log.error('Erreur mise à jour mot de passe', { message: error.message });
+        } else {
+            log.info('Mot de passe mis à jour avec succès', { userId: user?.id });
+        }
         if (error) {
             alert(`Erreur lors de la mise à jour du mot de passe : ${error.message}`);
         } else {

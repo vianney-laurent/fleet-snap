@@ -1,149 +1,163 @@
-# 🚗 Fleet Snap — Application de gestion d’inventaire automobile
+# 🚗 Fleet Snap — Inventory Management for Car Dealerships
 
-Fleet Snap est une application web mobile-first permettant aux collaborateurs de concessions automobiles de réaliser rapidement des inventaires de véhicules en photographiant la plaque d’immatriculation ou le VIN.  
-Les utilisateurs se connectent via Supabase Auth, les zones sont gérées dans une table Supabase, et chaque inventaire est transmis à un webhook Make.com.
-
----
-
-## 📋 Fonctionnalités principales
-
-### 🔑 Authentification
-- Connexion par email et mot de passe via **Supabase Auth**  
-- Stockage du nom et de la concession de l’utilisateur dans `user_metadata`
-
-### 🌍 Gestion des zones
-- Liste des zones récupérée dynamiquement depuis la table `zones` de Supabase  
-- Possibilité de créer de nouvelles zones directement depuis l’interface
-
-### 📸 Capture et envoi d’inventaire
-- Prise de photo ou téléversement d’une image de plaque/VIN  
-- Saisie d’un commentaire optionnel  
-- Envoi des données (photo + metadata utilisateur + zone + commentaire) au **WEBHOOK_URL** (Make.com)
-
-### 📜 Historique
-- Affichage de l’historique des inventaires de l’utilisateur connecté  
-- Récupération via une API interne Next.js qui interroge Supabase
-
-### 👤 Profil utilisateur
-- Mise à jour du nom, de la concession et du mot de passe  
-- Utilisation de `supabase.auth.updateUser()` pour les modifications
-
-### 🛠️ Back-office (Admin)
-- Création de nouveaux utilisateurs (email, mot de passe, concession)  
-- Endpoint API sécurisé utilisant la **Service Role Key** de Supabase (côté serveur)
+Fleet Snap is a mobile-first Next.js application that lets dealership staff quickly log vehicle inventories by snapping a photo of the license plate or VIN. All processing (image upload, OCR/VIN parsing, data storage) happens in-app via Supabase and Google’s Gemini Flash 2.0 — no Make.com required.
 
 ---
 
-## ⚙️ Technologies
+## 📋 Key Features
 
-| Outil        | Usage                                               |
-| ------------ | --------------------------------------------------- |
-| Next.js      | Framework React + routes API                        |
-| Tailwind CSS | Styling responsive mobile-first                     |
-| Supabase     | Authentification & base de données Postgres         |
-| Make.com     | Webhook pour traitement et stockage externe         |
-| React Hooks  | `useState`, `useEffect` pour la gestion du state    |
+### 🔑 Authentication
+- Email/password sign-in via **Supabase Auth**
+- User metadata (name, concession) stored in `user_metadata`
+
+### 🌍 Zone Management
+- Dynamic list of zones loaded from Supabase table `zones`
+- Create new zones directly in the UI
+
+### 📸 Inventory Capture
+- Snap or upload one or more photos of plate/VIN
+- Serverless upload to **Supabase Storage**
+- OCR / VIN parsing with **Google Gemini Flash 2.0** via GenAI SDK
+- Save each record in a Postgres table `inventaire` with:
+  - `user_id`, `email`, `name`, `concession`
+  - `zone`, `commentaire`, `photo_url`, `identifiant` (OCR result)
+  - `created_at`
+
+### 📜 History
+- View your past inventories in a paginated list
+- Thumbnails loaded from permanent public URLs
+- Editable VIN/plate and comments in place
+- Delete entries on demand
+
+### 👥 Admin Interface
+- List all users, sorted alphabetically by name or email
+- Create new users (email/password/concession) via a secured API route using Supabase Service Role Key
+
+### 📤 CSV Export
+- Export inventory data filtered by:
+  - **Concession** (dropdown pre-filled from your profile)
+  - **Date range** (start/end)
+- Generates a BOM-prefixed UTF-8 CSV (`\uFEFF…`) for Excel compatibility
+- Sends CSV via email using **Brevo** SMTP API
 
 ---
 
-## 🗂️ Structure du projet
+## ⚙️ Tech Stack
+
+| Technology             | Purpose                                    |
+| ---------------------- | ------------------------------------------ |
+| **Next.js**            | React framework + API routes               |
+| **Tailwind CSS**       | Responsive, utility-first styling          |
+| **Supabase**           | Auth, Postgres, Storage, Serverless APIs   |
+| **Google GenAI SDK**   | Gemini Flash 2.0 OCR/VIN parsing           |
+| **React DatePicker**   | Date range selection                       |
+| **Brevo SMTP API**     | CSV export email delivery                  |
+| **Formidable**         | Multipart form parsing in Next.js APIs     |
+
+---
+
+## 🗂️ Project Structure
 
 ```text
 fleet-snap/
-├─ components/
-│  ├─ Header.js
-│  └─ Layout.js
-├─ pages/
-│  ├─ index.js       # Page de connexion
-│  ├─ inventory.js   # Capture et envoi de photo
-│  ├─ history.js     # Historique des inventaires
-│  ├─ profile.js     # Mise à jour du profil
-│  ├─ admin.js       # Interface admin
-│  └─ api/
-│     ├─ createUser.js  # Création sécurisée d’utilisateurs
-│     └─ history.js     # Récupère l’historique depuis Supabase
-├─ public/
-│  └─ logo.png
-├─ styles/
-│  └─ globals.css
-├─ .env.local
-├─ next.config.ts
-├─ package.json
-└─ tailwind.config.js
+├─ components/  
+│  ├─ Header.js  
+│  └─ Layout.js  
+├─ pages/  
+│  ├─ index.js        # Login  
+│  ├─ inventory.js    # Capture & submit inventory  
+│  ├─ history.js      # Paginated history + export modal  
+│  ├─ profile.js      # Update user profile  
+│  ├─ admin.js        # Admin: list/create users  
+│  ├─ api/  
+│  │  ├─ inventory.js       # Handle uploads, OCR, DB insert  
+│  │  ├─ history.js         # Fetch user’s history  
+│  │  ├─ getConcessions.js  # List concessions for export  
+│  │  ├─ createUser.js      # Admin user creation  
+│  │  └─ exportInventory.js # Generate & email CSV  
+├─ public/  
+│  └─ logo.png  
+├─ styles/  
+│  └─ globals.css  
+├─ .env.local  
+├─ next.config.js  
+├─ package.json  
+└─ tailwind.config.js  
 ```
 
 ---
 
-## 🔑 Variables d’environnement
+## 🔑 Environment Variables
 
-Créez un fichier `.env.local` à la racine :
+Create a `.env.local` in your project root:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=<URL_SUPABASE>
-NEXT_PUBLIC_SUPABASE_ANON_KEY=<ANON_KEY>
-SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY>
-WEBHOOK_URL=<URL_WEBHOOK_MAKE>
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>
+SUPABASE_SERVICE_ROLE_KEY=<your-service-role-key>
+SUPABASE_STORAGE_BUCKET=photos
+
+# Google Gemini Flash 2.0
+GEMINI_API_KEY=<your-gemini-api-key>
+
+# Brevo SMTP (CSV export)
+BREVO_API_KEY=<your-brevo-api-key>
+BREVO_SENDER_EMAIL=<sender-email@example.com>
 ```
 
----
-
-## 🔗 Flux des données
-
-1. L’utilisateur se connecte (Supabase Auth).  
-2. Son email, nom et concession sont lus depuis `user_metadata`.  
-3. L’utilisateur prend ou téléverse une photo et ajoute un commentaire.  
-4. Les données (photo, email, concession, zone, commentaire) sont envoyées au webhook Make.com.  
-5. Make.com traite le payload (ex. enregistrement externe).  
-6. La page Historique interroge Supabase pour afficher les inventaires de l’utilisateur.
+> **Note:** On Vercel, configure the same vars under **Settings → Environment Variables** for both Preview and Production.
 
 ---
 
-## 🚀 Commandes utiles
+## 🚀 Getting Started
 
-```bash
-# Installation des dépendances
-npm install
-
-# Lancement en mode développement
-npm run dev
-
-# Build pour production
-npm run build
-```
-
----
-
-## ✅ To-Do & améliorations possibles
-
-- Prévisualisation des photos avant envoi  
-- Notifications toast pour un meilleur retour utilisateur  
-- Gestion des rôles fine-grained pour l’interface Admin  
-- Mode hors-ligne (caching local)
+1. **Install dependencies**  
+   ```bash
+   npm install
+   ```
+2. **Run in development**  
+   ```bash
+   npm run dev
+   ```
+3. **Build for production**  
+   ```bash
+   npm run build
+   npm run start
+   ```
 
 ---
 
-## 📋 Exemple de payload envoyé au webhook
+## ⚙️ How It Works
 
-```json
-{
-  "email": "collaborateur@concession.com",
-  "concession": "Nom de la concession",
-  "zone": "Zone A",
-  "comment": "Véhicule en bon état",
-  "photo": "<fichier-binaire>"
-}
-```
-
----
-
-## 🛠️ Prérequis
-
-- Node.js 18+  
-- Compte Supabase (tables `auth.users` + table `zones`)  
-- Compte Make.com avec un webhook configuré
+1. **Login** via Supabase Auth.  
+2. **Capture** photo(s) and optional comment → Frontend sends `FormData` with image(s), zone, comment to `/api/inventory`.  
+3. **API** (`inventory.js`):
+   - Verifies JWT, fetches user metadata
+   - Uploads image buffer to Supabase Storage → permanent public URL
+   - Calls Gemini Flash 2.0 with inline base64 data → extracts plate/VIN
+   - Inserts one row per photo in `inventaire`
+4. **History** (`history.js`):
+   - Fetches paginated records via `/api/history`
+   - Displays thumbnails, plate/VIN, zone, comment, collaborator, date
+   - Edit/Delete in place
+   - Export modal → select concession & dates → sends POST to `/api/exportInventory`
+5. **Export**:
+   - Generates CSV with BOM UTF-8
+   - Emails via Brevo
 
 ---
 
-## 📃 Licence
+## 🛠️ Next Steps & To-Dos
 
-Projet privé — Tous droits réservés
+- **Multi-photo upload** on the frontend (preview thumbnails + progress bar)  
+- **Offline support** (caching & PWA)  
+- **Role-based access control** (fine-grained permissions in Supabase)  
+- **Retry/fallback OCR** (Google Vision API or Tesseract.js)  
+- **Notifications** (toasts on success/error)
+
+---
+
+## 📃 License
+
+Private project — all rights reserved

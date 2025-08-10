@@ -9,29 +9,39 @@ const supabase = createClient(
 );
 
 export default function Inventory() {
-  const [photo, setPhoto] = useState(null);
+  // Multiple photos for batch upload
+  const [photos, setPhotos] = useState([]);
   const [comment, setComment] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [user, setUser] = useState(null);
+  const [loadingUser, setLoadingUser] = useState(true);
   const [loading, setLoading] = useState(false);
   const [zone, setZone] = useState('');
   const [zones, setZones] = useState([]);
   const [showZoneInput, setShowZoneInput] = useState(false);
   const [newZone, setNewZone] = useState('');
+
+  // Remove a selected photo by index
+  const handleRemovePhoto = (index) => {
+    setPhotos(prev => prev.filter((_, i) => i !== index));
+  };
   const router = useRouter();
 
   // Récupère l'utilisateur + la concession
   useEffect(() => {
     async function fetchUser() {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setUser(data.user);
-      } else {
+      // Retrieve session and user
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) {
+        setLoadingUser(false);
         router.push('/');
+        return;
       }
+      setUser(session.user);
+      setLoadingUser(false);
     }
     fetchUser();
-  }, []);
+  }, [router]);
 
   // Récupère la zone depuis le localStorage au chargement
   useEffect(() => {
@@ -102,7 +112,7 @@ export default function Inventory() {
 
   // Soumission du formulaire
   const handleSubmit = async () => {
-    if (!photo) {
+    if (!photos.length) {
       alert('Veuillez ajouter une photo.');
       return;
     }
@@ -124,10 +134,10 @@ export default function Inventory() {
     }
     const token = session.access_token;
     const formData = new FormData();
-    formData.append('photos', photo);
+    photos.forEach(file => formData.append('photos', file));
     formData.append('comment', comment);
     formData.append('zone', zone);
-    const response = await fetch('/api/inventory', {
+    const response = await fetch('/api/inventory/bulk', {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
       body: formData
@@ -136,12 +146,20 @@ export default function Inventory() {
     setShowModal(false);
     if (response.ok) {
       alert('Photo envoyée avec succès !');
-      setPhoto(null);
+      setPhotos([]);
       setComment('');
     } else {
       alert("Erreur lors de l’envoi.");
     }
   };
+
+  if (loadingUser) {
+    return (
+      <Layout>
+        <div className="p-6 text-center">Chargement...</div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
@@ -222,18 +240,41 @@ export default function Inventory() {
             <input
               type="file"
               accept="image/*"
+              multiple
               className="hidden"
               id="photoInput"
-              onChange={e => setPhoto(e.target.files[0])}
+              onChange={e => setPhotos(Array.from(e.target.files))}
             />
             <label htmlFor="photoInput" className="flex flex-col items-center cursor-pointer">
               <span className="text-5xl mb-2">📸</span>
-              {photo ? (
-                <span className="text-sm">{photo.name}</span>
+              {photos.length > 0 ? (
+                <span className="text-sm">{photos.length} photo(s) sélectionnée(s)</span>
               ) : (
                 <span className="text-sm">Déposer une photo</span>
               )}
             </label>
+            {photos.length > 0 && (
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                {photos.map((file, idx) => (
+                  <div key={idx} className="relative flex items-center justify-center">
+                    {/* Remove button */}
+                    <button
+                      type="button"
+                      onClick={() => handleRemovePhoto(idx)}
+                      className="absolute top-1 right-1 bg-gray-800 bg-opacity-50 text-white rounded-full p-1"
+                    >
+                      ×
+                    </button>
+                    {/* Centered thumbnail */}
+                    <img
+                      src={URL.createObjectURL(file)}
+                      alt={file.name}
+                      className="mx-auto w-full h-24 object-cover rounded"
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Boutons d'envoi */}

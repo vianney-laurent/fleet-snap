@@ -18,7 +18,7 @@ const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 // Nom du bucket Supabase Storage défini en .env.local (défaut: 'photos')
 const STORAGE_BUCKET = process.env.SUPABASE_STORAGE_BUCKET || 'photos';
 
-export default async function handler(req, res) {
+async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader('Allow', ['POST']);
     return res.status(405).json({ error: 'Méthode non autorisée' });
@@ -33,6 +33,8 @@ export default async function handler(req, res) {
         else resolve({ fields, files });
       });
     });
+
+    const fileCount = Array.isArray(files.photos) ? files.photos.length : 1;
 
     // 2. Authentification via token Supabase
     const authHeader = req.headers.authorization;
@@ -73,7 +75,7 @@ export default async function handler(req, res) {
         inlineData: { mimeType: file.mimetype, data: base64Image }
       };
       const textPart = {
-        text: 'Extrait uniquement la plaque d’immatriculation ou le VIN (17 caractères alphanumériques, sans les lettres I, O, Q). Si aucune détection, renvoyez NO_DETECTION.'
+        text: 'Extrait uniquement la plaque d’immatriculation ou le VIN (17 caractères alphanumériques, il ne peut pas y avoir de lettres I, O, Q. Les O sont forcément des 0). Si aucune détection, renvoyez NO_DETECTION.'
       };
       const ocrResponse = await ai.models.generateContent({
         model: 'gemini-2.0-flash',
@@ -105,7 +107,8 @@ export default async function handler(req, res) {
 
     return res.status(200).json({ success: true, records: insertData });
   } catch (err) {
-    console.error('API Inventory Error:', err);
     return res.status(500).json({ error: err.message });
   }
 }
+
+export default handler;

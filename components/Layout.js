@@ -56,17 +56,17 @@ export default function Layout({ children }) {
                 <Footer onSupportClick={() => setSupportModalOpen(true)} />
 
                 {supportModalOpen && (
-                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-                        <div className="bg-white p-6 rounded-lg w-full max-w-md relative">
-                            <h2 className="text-xl font-bold mb-4">Contacter le support</h2>
-                            <div className="space-y-3">
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50 transition-opacity duration-200 ease-in-out">
+                        <div className="bg-white rounded-md shadow-md p-6 w-full max-w-md relative space-y-4 transition-transform duration-200 ease-in-out transform">
+                            <h2 className="text-xl font-semibold">Contacter le support</h2>
+                            <div className="space-y-4">
                                 <div>
                                     <label className="block text-sm font-medium">Email</label>
                                     <input
                                         type="email"
                                         value={email}
                                         readOnly
-                                        className="border p-2 w-full bg-gray-100 cursor-not-allowed"
+                                        className="border border-gray-300 rounded-md p-2 w-full bg-gray-100 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                                     />
                                 </div>
                                 <div>
@@ -75,7 +75,7 @@ export default function Layout({ children }) {
                                         type="text"
                                         value={fullName}
                                         readOnly
-                                        className="border p-2 w-full bg-gray-100 cursor-not-allowed"
+                                        className="border border-gray-300 rounded-md p-2 w-full bg-gray-100 cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                                     />
                                 </div>
                                 <div>
@@ -83,14 +83,14 @@ export default function Layout({ children }) {
                                     <textarea
                                         value={message}
                                         onChange={(e) => setMessage(e.target.value)}
-                                        className="border p-2 w-full h-32 resize-none"
+                                        className="border border-gray-300 rounded-md p-2 w-full h-32 resize-none focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
                                     />
                                 </div>
                                 <div className="flex justify-end space-x-3">
-                                    <button onClick={() => setSupportModalOpen(false)} className="px-4 py-2 bg-gray-300 rounded">
+                                    <button onClick={() => setSupportModalOpen(false)} className="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500">
                                         Annuler
                                     </button>
-                                    <button onClick={handleSendSupportRequest} className="px-4 py-2 bg-blue-600 text-white rounded">
+                                    <button onClick={handleSendSupportRequest} className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                                         Envoyer
                                     </button>
                                 </div>

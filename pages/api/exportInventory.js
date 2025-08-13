@@ -1,18 +1,25 @@
 import { createClient } from '@supabase/supabase-js';
+import { withApiLogging, logger } from '../../lib/logger';
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY
 );
 
-export default async function handler(req, res) {
+async function handler(req, res) {
+  const startTime = Date.now();
+  
   try {
     if (req.method !== 'POST') return res.status(405).json({ error: 'Méthode non autorisée' });
 
     const { email, concession, startDate, endDate } = req.body;
 
-    // Log des critères reçus (pour debug)
-    console.log({ concession, startDate, endDate });
+    logger.info('Demande export inventaire', { 
+      email, 
+      concession, 
+      startDate, 
+      endDate 
+    });
 
     // Ajout de zone au select
     let query = supabase
@@ -28,9 +35,20 @@ export default async function handler(req, res) {
     const { data, error } = await query;
 
     if (error) {
-      console.log('Erreur Supabase:', error);
+      logger.error('Erreur requête export Supabase', error, { 
+        email, 
+        concession, 
+        startDate, 
+        endDate 
+      });
       return res.status(500).json({ error: error.message });
     }
+
+    logger.info('Données récupérées pour export', { 
+      email, 
+      concession, 
+      recordCount: data?.length || 0 
+    });
 
     // Générer le CSV : ajout "Zone"
     const csvRows = [
@@ -51,7 +69,13 @@ export default async function handler(req, res) {
       .map(r => r.map(v => `"${(v || '').replace(/"/g, '""')}"`).join(','))
       .join('\n');
     const csvContent = bom + csvBody;
-    console.log('CSV généré:', csvContent.substring(0, 200) + '...');
+    
+    logger.info('CSV généré', { 
+      email, 
+      concession, 
+      csvSize: csvContent.length,
+      recordCount: data?.length || 0
+    });
 
     // Envoi du mail via Brevo
     const filename = `inventaire_${concession}_${new Date().toISOString().split('T')[0]}.csv`;
@@ -78,16 +102,35 @@ export default async function handler(req, res) {
     });
 
     const brevoRespText = await brevoResponse.text();
-    console.log('Réponse Brevo:', brevoRespText);
 
     if (!brevoResponse.ok) {
+      logger.error('Erreur envoi email Brevo', null, { 
+        email, 
+        concession, 
+        brevoResponse: brevoRespText,
+        statusCode: brevoResponse.status
+      });
       return res.status(500).json({ error: `Erreur envoi mail: ${brevoRespText}` });
     }
+
+    const totalDuration = Date.now() - startTime;
+    logger.admin.export(email, concession, { startDate, endDate }, data?.length || 0, {
+      duration: totalDuration,
+      csvSize: csvContent.length,
+      success: true
+    });
 
     return res.status(200).json({ success: true });
 
   } catch (e) {
-    console.error('ERREUR API EXPORT:', e);
+    const totalDuration = Date.now() - startTime;
+    logger.error('Erreur API export', e, { 
+      email, 
+      concession, 
+      duration: totalDuration 
+    });
     return res.status(500).json({ error: e.message });
   }
 }
+
+export default withApiLogging(handler);

@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
 
   // Ignorer temporairement les erreurs TypeScript pour le build Vercel
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false,
   },
 
 

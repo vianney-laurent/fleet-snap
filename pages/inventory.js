@@ -32,14 +32,22 @@ export default function Inventory() {
   // Récupère l'utilisateur + la concession
   useEffect(() => {
     async function fetchUser() {
-      const { data } = await supabase.auth.getUser();
-      if (data?.user) {
-        setUser(data.user);
-      } else {
-        router.push('/');
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        if (sessionError) {
+          console.error('getSession error:', sessionError);
+          router.push('/');
+          return;
+        }
+        if (session?.user) {
+          setUser(session.user);
+        } else {
+          router.push('/');
+          return;
+        }
+      } finally {
+        setLoadingUser(false);
       }
-      setUser(session.user);
-      setLoadingUser(false);
     }
     fetchUser();
   }, [router]);
@@ -116,9 +124,9 @@ export default function Inventory() {
   };
 
   // Soumission du formulaire
-  const handleSubmit = async () => {
-    if (!photo) {
-      alert('Veuillez ajouter une photo.');
+  const handleSubmit = async (action) => {
+    if (!photos || photos.length === 0) {
+      alert('Veuillez ajouter au moins une photo.');
       return;
     }
     if (!user) {
@@ -131,36 +139,49 @@ export default function Inventory() {
       alert('Merci de sélectionner une zone avant de poursuivre.');
       return;
     }
+
+    setSubmittingAction(action || null);
     setLoading(true);
+
     // Récupération du token Supabase
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {
       log.error('handleSubmit: session invalide', { sessionError });
       setLoading(false);
+      setSubmittingAction(null);
       alert('Session invalide, veuillez vous reconnecter.');
       return;
     }
+
     const token = session.access_token;
     const formData = new FormData();
-    formData.append('photos', photo);
+    photos.forEach((file) => formData.append('photos', file));
     formData.append('comment', comment);
     formData.append('zone', zone);
-    const response = await fetch('/api/inventory/bulk', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
-      body: formData
-    });
-    setLoading(false);
-    setShowModal(false);
-    setSubmittingAction(null);
-    if (response.ok) {
-      log.info('Inventaire envoyé avec succès', { status: response.status });
-      alert('Photo envoyée avec succès !');
-      setPhotos([]);
-      setComment('');
-    } else {
-      log.error('Erreur envoi inventaire', { status: response.status });
-      alert("Erreur lors de l’envoi.");
+
+    try {
+      const response = await fetch('/api/inventory/bulk', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData
+      });
+
+      if (response.ok) {
+        log.info('Inventaire envoyé avec succès', { status: response.status });
+        alert(`${photos.length} photo(s) envoyée(s) ! Traitement en arrière-plan.`);
+        setPhotos([]);
+        setComment('');
+        setShowModal(false);
+      } else {
+        log.error('Erreur envoi inventaire', { status: response.status });
+        alert("Erreur lors de l’envoi.");
+      }
+    } catch (err) {
+      log.error('Erreur réseau envoi inventaire', { err });
+      alert("Erreur réseau lors de l’envoi.");
+    } finally {
+      setLoading(false);
+      setSubmittingAction(null);
     }
   };
 

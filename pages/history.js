@@ -4,7 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
-import { log } from 'next-axiom';
+import { logger } from '../lib/logger';
 
 import fr from 'date-fns/locale/fr';
 registerLocale('fr', fr);
@@ -17,7 +17,7 @@ const formatTextArray = (value) => {
   try {
     const parsed = JSON.parse(value);
     if (Array.isArray(parsed)) return parsed.filter(Boolean).join(', ');
-  } catch {}
+  } catch { }
   return value;
 };
 
@@ -75,6 +75,56 @@ export default function History() {
   const [exportError, setExportError] = useState('');
   const [startDate, endDate] = dateRange;
 
+  // Filtre par statut (par défaut: tout)
+  const ALL_STATUSES = ['pending', 'processing', 'done', 'error'];
+  const [statusFilter, setStatusFilter] = useState(ALL_STATUSES);
+  const isActive = (s) => statusFilter.includes(s);
+  const setAllStatuses = () => {
+    logger.info('Filtre historique: Tout sélectionné', {
+      userId: user?.id,
+      previousFilter: statusFilter
+    });
+    setStatusFilter(ALL_STATUSES);
+  };
+  const toggleStatus = (s) => {
+    setStatusFilter(prev => {
+      let next;
+      const isCurrentlySelected = prev.includes(s);
+      const isAllCurrentlySelected = prev.length === ALL_STATUSES.length && 
+                                    ALL_STATUSES.every(status => prev.includes(status));
+      
+      if (isAllCurrentlySelected) {
+        // CAS SPÉCIAL: Si tout est sélectionné → ne garder que ce statut
+        next = [s];
+      } else if (isCurrentlySelected) {
+        // COMPORTEMENT: Clic sur un statut déjà sélectionné → le retirer
+        next = prev.filter(x => x !== s);
+        // Si on retire le dernier, revenir à "tout"
+        if (next.length === 0) {
+          next = [...ALL_STATUSES];
+        }
+      } else {
+        // COMPORTEMENT: Clic sur un statut non sélectionné → l'ajouter
+        next = [...prev, s];
+      }
+      
+      logger.info('Filtre historique modifié', {
+        userId: user?.id,
+        action: isAllCurrentlySelected ? 'select_only' : (isCurrentlySelected ? 'removed' : 'added'),
+        status: s,
+        previousFilter: prev,
+        newFilter: next,
+        wasAllSelected: isAllCurrentlySelected,
+        isNowAllSelected: next.length === ALL_STATUSES.length
+      });
+      
+      return next;
+    });
+  };
+
+  // Affichage des filtres sur mobile
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+
   // Export : concession à sélectionner
   const [exportConcession, setExportConcession] = useState('');
   const [exportConcessionOptions, setExportConcessionOptions] = useState([]);
@@ -84,10 +134,14 @@ export default function History() {
   useEffect(() => {
     async function fetchUserAndData() {
       const { data: userData } = await supabase.auth.getUser();
-      log.info('Utilisateur récupéré dans History', { user: userData.user });
+      logger.info('Utilisateur connecté sur historique', {
+        userId: userData.user?.id,
+        email: userData.user?.email,
+        concession: userData.user?.user_metadata?.concession
+      });
       if (!userData.user) {
-        log.warn('Utilisateur non authentifié in History, redirection vers login');
-        router.push('/');
+        logger.auth.sessionExpired('unknown', { page: 'history' });
+        router.push('/?reason=session-expired');
         return;
       }
       setUser(userData.user);
@@ -109,16 +163,29 @@ export default function History() {
           queryParams.append('endDate', endDate.toISOString().split('T')[0]);
         }
 
-        log.debug('Appel API /api/history', { url: `/api/history?${queryParams.toString()}` });
+        logger.info('Consultation historique', {
+          userId: userData.user.id,
+          page: currentPage,
+          dateRange: { startDate: startDate?.toISOString(), endDate: endDate?.toISOString() }
+        });
+
         const response = await fetch(`/api/history?${queryParams.toString()}`);
         if (!response.ok) throw new Error(`Erreur API: ${response.status}`);
 
         const { records, totalPages } = await response.json();
-        log.info('History records reçus', { recordCount: records.length, totalPages });
+        logger.info('Historique chargé', {
+          userId: userData.user.id,
+          recordCount: records.length,
+          totalPages,
+          page: currentPage
+        });
         setRecords(records || []);
         setTotalPages(totalPages);
       } catch (err) {
-        log.error('Error fetching history', { message: err.message, stack: err.stack });
+        logger.error('Erreur chargement historique', err, {
+          userId: userData.user?.id,
+          page: currentPage
+        });
         setError('Impossible de récupérer les données.');
       } finally {
         setLoading(false);
@@ -128,26 +195,26 @@ export default function History() {
     fetchUserAndData();
   }, [router, user?.id, currentPage, startDate, endDate]);
 
-useEffect(() => {
-  async function fetchConcessions() {
-    try {
-      const response = await fetch('/api/getConcessions');
-      const json = await response.json();
-      if (response.ok) {
-        // Extract names if concessions are objects
-        const options = Array.isArray(json.concessions)
-          ? json.concessions.map(item => (item && item.name) || item)
-          : [];
-        setExportConcessionOptions(options);
-      } else {
-        log.error('fetchConcessions error', { error: json?.error });
+  useEffect(() => {
+    async function fetchConcessions() {
+      try {
+        const response = await fetch('/api/getConcessions');
+        const json = await response.json();
+        if (response.ok) {
+          // Extract names if concessions are objects
+          const options = Array.isArray(json.concessions)
+            ? json.concessions.map(item => (item && item.name) || item)
+            : [];
+          setExportConcessionOptions(options);
+        } else {
+          logger.error('Erreur récupération concessions', new Error(json?.error));
+        }
+      } catch (err) {
+        logger.error('Erreur réseau concessions', err);
       }
-    } catch (err) {
-      log.error('fetchConcessions error', { error: err });
     }
-  }
-  fetchConcessions();
-}, []);
+    fetchConcessions();
+  }, []);
 
   useEffect(() => {
     if (exportConcessionOptions.length > 0) {
@@ -166,6 +233,11 @@ useEffect(() => {
   }, [user]);
 
   const handleEditClick = (record) => {
+    logger.info('Début édition enregistrement', {
+      userId: user?.id,
+      recordId: record.id,
+      currentIdentifiant: record.identifiant
+    });
     setEditingRecord(record);
     setNewPlateVin(record.identifiant);
     setNewCommentaire(record.commentaire || '');
@@ -180,6 +252,14 @@ useEffect(() => {
   };
 
   const handleSave = async () => {
+    logger.info('Sauvegarde modification enregistrement', {
+      userId: user?.id,
+      recordId: editingRecord.id,
+      oldIdentifiant: editingRecord.identifiant,
+      newIdentifiant: newPlateVin,
+      hasCommentChange: (editingRecord.commentaire || '') !== newCommentaire
+    });
+
     const response = await fetch(`/api/updateRecord`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -191,6 +271,11 @@ useEffect(() => {
     });
 
     if (response.ok) {
+      logger.info('Enregistrement modifié avec succès', {
+        userId: user?.id,
+        recordId: editingRecord.id,
+        newIdentifiant: newPlateVin
+      });
       setRecords(records.map((r) =>
         r.id === editingRecord.id
           ? { ...r, identifiant: newPlateVin, commentaire: newCommentaire }
@@ -198,7 +283,79 @@ useEffect(() => {
       ));
       handleCloseModal();
     } else {
+      logger.error('Erreur modification enregistrement', null, {
+        userId: user?.id,
+        recordId: editingRecord.id,
+        status: response.status
+      });
       alert('Erreur lors de la mise à jour');
+    }
+  };
+
+  const handleRetryClick = async (record) => {
+    logger.info('Tentative de réessai traitement OCR', {
+      userId: user?.id,
+      recordId: record.id,
+      currentStatus: record.status,
+      currentIdentifiant: record.identifiant
+    });
+
+    try {
+      // Remettre le statut à 'pending' pour qu'il soit retraité
+      const { error } = await supabase
+        .from('inventaire')
+        .update({ 
+          status: 'pending', 
+          identifiant: null 
+        })
+        .eq('id', record.id);
+
+      if (error) {
+        logger.error('Erreur remise en pending', error, { 
+          userId: user?.id,
+          recordId: record.id 
+        });
+        alert('Erreur lors de la remise en traitement');
+        return;
+      }
+
+      // Déclencher immédiatement le traitement OCR
+      const baseUrl = window.location.origin;
+      fetch(`${baseUrl}/api/inventory/triggerOcr`, {
+        method: 'GET',
+        headers: {
+          'User-Agent': 'FleetSnap-Retry-Trigger',
+          'X-Triggered-By': 'manual-retry',
+          'X-User-Id': user?.id,
+          'X-Record-Count': '1'
+        }
+      }).catch(error => {
+        logger.warn('Erreur déclenchement OCR retry', { 
+          userId: user?.id,
+          error: error.message 
+        });
+      });
+
+      // Mettre à jour l'état local
+      setRecords(records.map((r) =>
+        r.id === record.id
+          ? { ...r, status: 'pending', identifiant: null }
+          : r
+      ));
+
+      logger.info('Record remis en traitement', {
+        userId: user?.id,
+        recordId: record.id
+      });
+
+      alert('Photo remise en traitement, veuillez patienter...');
+
+    } catch (err) {
+      logger.error('Erreur retry traitement', err, { 
+        userId: user?.id,
+        recordId: record.id 
+      });
+      alert('Erreur lors de la remise en traitement');
     }
   };
 
@@ -208,28 +365,44 @@ useEffect(() => {
   };
 
   const handleDeleteConfirm = async () => {
+    logger.info('Suppression enregistrement', {
+      userId: user?.id,
+      recordId: recordToDelete.id,
+      identifiant: recordToDelete.identifiant
+    });
+
     const response = await fetch(`/api/deleteRecord`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ recordId: recordToDelete.id })
     });
+
     if (response.ok) {
+      logger.info('Enregistrement supprimé avec succès', {
+        userId: user?.id,
+        recordId: recordToDelete.id
+      });
       setRecords(records.filter((r) => r.id !== recordToDelete.id));
       setShowDeleteModal(false);
       setRecordToDelete(null);
     } else {
+      logger.error('Erreur suppression enregistrement', null, {
+        userId: user?.id,
+        recordId: recordToDelete.id,
+        status: response.status
+      });
       alert('Erreur lors de la suppression');
     }
   };
 
   const handleExport = async () => {
-  setExportLoading(true);
-  setExportError('');
-  setExportSuccess(false);
-  try {
+    setExportLoading(true);
+    setExportError('');
+    setExportSuccess(false);
+    try {
       const [start, end] = exportDateRange;
-      if (start) start.setHours(0,0,0,0);
-      if (end) end.setHours(23,59,59,999);
+      if (start) start.setHours(0, 0, 0, 0);
+      if (end) end.setHours(23, 59, 59, 999);
       const body = {
         email: user.email,
         concession: exportConcession,
@@ -237,21 +410,21 @@ useEffect(() => {
         endDate: end ? end.toISOString() : null,
       };
 
-    const response = await fetch('/api/exportInventory', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+      const response = await fetch('/api/exportInventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-    if (!response.ok) throw new Error('Erreur lors de l’export');
+      if (!response.ok) throw new Error('Erreur lors de l’export');
 
-    setExportSuccess(true);
-  } catch (err) {
-    setExportError("Une erreur est survenue pendant l'export.");
-  } finally {
-    setExportLoading(false);
-  }
-};
+      setExportSuccess(true);
+    } catch (err) {
+      setExportError("Une erreur est survenue pendant l'export.");
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   const handleCloseDeleteModal = () => {
     setShowDeleteModal(false);
@@ -278,6 +451,12 @@ useEffect(() => {
     );
   }
 
+  // Applique le filtre côté client (records anciens sans statut = assimilés à "done")
+  const filteredRecords = records.filter(r => isActive(r.status || 'done'));
+  const mobileSelectValue = statusFilter.length === ALL_STATUSES.length ? 'all' : (statusFilter.length === 1 ? statusFilter[0] : 'all');
+  
+
+
   return (
     <Layout>
       <div className="p-4 max-w-4xl mx-auto space-y-6">
@@ -301,23 +480,142 @@ useEffect(() => {
           </button>
         </div>
 
+        {/* Bouton filtre - Mobile */}
+        <div className="sm:hidden">
+          <button
+            type="button"
+            onClick={() => setShowMobileFilters((v) => !v)}
+            aria-expanded={showMobileFilters}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm rounded-full border border-gray-300 bg-white text-gray-700 shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path d="M3 4a1 1 0 011-1h12a1 1 0 01.8 1.6L12 12v4a1 1 0 01-1.447.894l-2-1A1 1 0 018 15v-3L3.2 4.6A1 1 0 013 4z" />
+            </svg>
+            Filtres
+          </button>
+        </div>
+
+        {/* Filtres de statut */}
+        <div className={`${showMobileFilters ? 'flex' : 'hidden'} sm:flex flex-wrap items-center gap-2`}>
+          <span className="text-sm text-gray-600 mr-1">Filtrer :</span>
+          <button
+            type="button"
+            onClick={setAllStatuses}
+            className={`inline-flex px-2.5 py-1 text-xs rounded-full border transition ${statusFilter.length === ALL_STATUSES.length ? 'bg-gray-100 text-gray-800 border-gray-300' : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'}`}
+            title="Tout afficher"
+          >
+            Tout
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleStatus('pending')}
+            className={`inline-flex px-2.5 py-1 text-xs rounded-full border transition ${isActive('pending') ? 'bg-yellow-100 text-yellow-800 border-yellow-200' : 'bg-white text-gray-500 border-gray-200 hover:bg-yellow-50'}`}
+          >
+            En attente
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleStatus('processing')}
+            className={`inline-flex px-2.5 py-1 text-xs rounded-full border transition ${isActive('processing') ? 'bg-orange-100 text-orange-800 border-orange-200' : 'bg-white text-gray-500 border-gray-200 hover:bg-orange-50'}`}
+          >
+            En cours
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleStatus('done')}
+            className={`inline-flex px-2.5 py-1 text-xs rounded-full border transition ${isActive('done') ? 'bg-green-100 text-green-800 border-green-200' : 'bg-white text-gray-500 border-gray-200 hover:bg-green-50'}`}
+          >
+            Terminé
+          </button>
+          <button
+            type="button"
+            onClick={() => toggleStatus('error')}
+            className={`inline-flex px-2.5 py-1 text-xs rounded-full border transition ${isActive('error') ? 'bg-red-100 text-red-800 border-red-200' : 'bg-white text-gray-500 border-gray-200 hover:bg-red-50'}`}
+          >
+            Erreur
+          </button>
+        </div>
+
         {error && <p className="text-red-500 mb-4">{error}</p>}
 
+        {/* Message d'information pour les erreurs */}
+        {filteredRecords.some(r => r.status === 'error') && statusFilter.includes('error') && (
+          <div className="bg-orange-50 border border-orange-200 rounded-md p-3 mb-4">
+            <div className="flex items-start">
+              <span className="text-orange-500 mr-2">⚠️</span>
+              <div className="text-sm text-orange-700">
+                <p className="font-medium">Photos en erreur détectées</p>
+                <p>Certaines photos n'ont pas pu être traitées. Utilisez le bouton 🔄 pour réessayer le traitement OCR.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+
+
         <div className="space-y-4">
-          {records.map((record) => (
+          {filteredRecords.map((record) => (
             <div
               key={record.id}
-              className="flex items-center justify-between bg-white shadow-md rounded-md p-4 border border-gray-200"
+              className="relative flex items-center justify-between gap-4 bg-white shadow-md rounded-md p-4 border border-gray-200"
             >
               <div className="flex items-center space-x-4 min-w-0">
-                <img
-                  src={record.photo_url || ''}
-                  alt="Photo véhicule"
-                  className="w-16 h-16 object-cover rounded cursor-pointer"
-                  onClick={() => handlePhotoClick(record.photo_url)}
-                />
-                <div className="flex-1 min-w-0">
-                  <p className="font-bold text-lg truncate">{record.identifiant}</p>
+                <div className="relative">
+                  <img
+                    src={record.photo_url || ''}
+                    alt="Photo véhicule"
+                    className={`w-16 h-16 object-cover rounded cursor-pointer ${record.status === 'error' ? 'opacity-75 border-2 border-red-300' : ''}`}
+                    onClick={() => handlePhotoClick(record.photo_url)}
+                  />
+                  {record.status === 'error' && (
+                    <span className="absolute top-1 right-1 text-red-500 text-xs bg-white rounded-full p-0.5 shadow" title="Erreur de traitement">
+                      ⚠️
+                    </span>
+                  )}
+                  {record.status === 'done' && (
+                    <span className="sm:hidden absolute bottom-1 left-1 px-1.5 py-0.5 text-[10px] rounded-full bg-green-100 text-green-800 border border-green-200 shadow pointer-events-none">
+                      Terminé
+                    </span>
+                  )}
+                  {record.status === 'error' && (
+                    <span className="sm:hidden absolute bottom-1 left-1 px-1.5 py-0.5 text-[10px] rounded-full bg-red-100 text-red-800 border border-red-200 shadow pointer-events-none">
+                      Erreur
+                    </span>
+                  )}
+                </div>
+                <div className="flex-1 min-w-0 pr-3 sm:pr-6">
+                  <p className="font-semibold text-sm sm:text-base flex items-center gap-1 sm:gap-2 flex-nowrap leading-snug tracking-tight">
+                    <span className={`whitespace-nowrap ${record.status === 'error' ? 'text-red-600' : ''}`}>
+                      {record.status === 'error' ? 
+                        (record.identifiant === 'DOWNLOAD_ERROR' ? 'Erreur téléchargement' :
+                         record.identifiant === 'INVALID_MIMETYPE' ? 'Format image invalide' :
+                         record.identifiant === 'PROCESSING_ERROR' ? 'Erreur traitement' :
+                         record.identifiant === 'OCR_ERROR' ? 'Erreur OCR' :
+                         'Erreur inconnue') :
+                        (record.identifiant || <span className="text-gray-400 italic">—</span>)
+                      }
+                    </span>
+                    {record.status === 'pending' && (
+                      <span className="inline-flex px-1.5 py-0.5 text-[9px] sm:text-[10px] rounded-full bg-yellow-100 text-yellow-800 border border-yellow-200 whitespace-nowrap">
+                        En attente
+                      </span>
+                    )}
+                    {record.status === 'processing' && (
+                      <span className="inline-flex px-1.5 py-0.5 text-[9px] sm:text-[10px] rounded-full bg-orange-100 text-orange-800 border border-orange-200 whitespace-nowrap">
+                        En cours
+                      </span>
+                    )}
+                    {record.status === 'done' && (
+                      <span className="hidden sm:inline-flex px-1.5 py-0.5 text-[9px] sm:text-[10px] rounded-full bg-green-100 text-green-800 border border-green-200 whitespace-nowrap">
+                        Terminé
+                      </span>
+                    )}
+                    {record.status === 'error' && (
+                      <span className="inline-flex px-1.5 py-0.5 text-[9px] sm:text-[10px] rounded-full bg-red-100 text-red-800 border border-red-200 whitespace-nowrap">
+                        Erreur
+                      </span>
+                    )}
+                  </p>
                   {formatTextArray(record.commentaire) && (
                     <p className="text-sm text-gray-600 italic">{formatTextArray(record.commentaire)}</p>
                   )}
@@ -328,17 +626,34 @@ useEffect(() => {
                   <p className="text-sm text-gray-500">{new Date(record.created_at).toLocaleDateString('fr-FR')}</p>
                 </div>
               </div>
-              <div className="flex flex-col space-y-2 ml-4">
-                <button
-                  onClick={() => handleEditClick(record)}
-                  className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                  title="Modifier"
-                >✏️</button>
-                <button
-                  onClick={() => handleDeleteClick(record)}
-                  className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                  title="Supprimer"
-                >🗑️</button>
+              <div className="flex flex-col space-y-2 ml-2 sm:ml-4 shrink-0 w-14 sm:w-16 md:w-20">
+                {record.status === 'error' ? (
+                  <>
+                    <button
+                      onClick={() => handleRetryClick(record)}
+                      className="px-3 py-1 bg-orange-200 hover:bg-orange-300 text-orange-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                      title="Réessayer le traitement"
+                    >🔄</button>
+                    <button
+                      onClick={() => handleDeleteClick(record)}
+                      className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                      title="Supprimer"
+                    >🗑️</button>
+                  </>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleEditClick(record)}
+                      className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                      title="Modifier"
+                    >✏️</button>
+                    <button
+                      onClick={() => handleDeleteClick(record)}
+                      className="px-3 py-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                      title="Supprimer"
+                    >🗑️</button>
+                  </>
+                )}
               </div>
             </div>
           ))}

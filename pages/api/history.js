@@ -1,6 +1,7 @@
 // ✅ /pages/api/history.js — version Supabase
 
 import { createClient } from '@supabase/supabase-js';
+import { withApiLogging, logger } from '../../lib/logger';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -11,6 +12,7 @@ async function handler(req, res) {
   const { collaborateur, page = 1, limit = 20, startDate, endDate } = req.query;
 
   if (!collaborateur) {
+    logger.warn('Requête historique sans collaborateur');
     return res.status(400).json({ error: 'Le collaborateur est requis' });
   }
 
@@ -18,6 +20,13 @@ async function handler(req, res) {
   const recordsPerPage = parseInt(limit, 10);
   const from = (currentPage - 1) * recordsPerPage;
   const to = from + recordsPerPage - 1;
+
+  logger.info('Consultation historique API', {
+    collaborateur,
+    page: currentPage,
+    limit: recordsPerPage,
+    dateRange: { startDate, endDate }
+  });
 
   let query = supabase
     .from('inventaire')
@@ -35,8 +44,20 @@ async function handler(req, res) {
   const { data, error, count } = await query;
 
   if (error) {
+    logger.error('Erreur Supabase historique', error, { 
+      collaborateur, 
+      page: currentPage 
+    });
     return res.status(500).json({ error: 'Erreur Supabase' });
   }
+
+  logger.info('Historique récupéré avec succès', {
+    collaborateur,
+    recordCount: data?.length || 0,
+    totalRecords: count,
+    page: currentPage,
+    totalPages: Math.ceil(count / recordsPerPage)
+  });
 
   return res.status(200).json({
     records: data,
@@ -46,4 +67,4 @@ async function handler(req, res) {
   });
 }
 
-export default handler;
+export default withApiLogging(handler);

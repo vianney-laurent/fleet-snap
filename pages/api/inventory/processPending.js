@@ -45,16 +45,38 @@ export default async function handler(req, res) {
         const arrayBuffer = await imgRes.arrayBuffer();
         const base64Image = Buffer.from(arrayBuffer).toString('base64');
 
-        // OCR via Gemini Flash 2.0
+        // Déterminer le mimeType à partir des headers ou par défaut
+        let mimeType = imgRes.headers.get('content-type');
+        if (!mimeType || mimeType === 'application/octet-stream') {
+          // Fallback basé sur l'URL ou défaut
+          if (record.photo_url.toLowerCase().includes('.png')) {
+            mimeType = 'image/png';
+          } else if (record.photo_url.toLowerCase().includes('.webp')) {
+            mimeType = 'image/webp';
+          } else {
+            mimeType = 'image/jpeg'; // Défaut le plus courant
+          }
+        }
+
+        // Validation du mimeType avant envoi à Gemini
+        if (!mimeType || mimeType.trim() === '') {
+          console.error(`Invalid mimeType for record ${record.id}:`, mimeType);
+          continue;
+        }
+
+        console.log(`Processing OCR for record ${record.id} with mimeType: ${mimeType}`);
+
+        // OCR via Gemini Flash 2.0 avec prompt détaillé
         const ocrResponse = await ai.models.generateContent({
           model: 'gemini-2.0-flash',
           contents: {
             parts: [
-              { inlineData: { data: base64Image } }
+              { inlineData: { data: base64Image, mimeType: mimeType } },
+              { text: 'Extrait uniquement la plaque d\'immatriculation ou le VIN (17 caractères alphanumériques, il ne peut pas y avoir de lettres I, O, Q. Les O sont forcément des 0). Si aucune détection, renvoyez NO_DETECTION.' }
             ]
           },
           config: {
-            systemInstruction: 'You are a specialized OCR assistant. Extract only the license plate or VIN (17 alphanumeric characters, no I,O,Q). Reply with the text or NO_DETECTION.'
+            systemInstruction: 'Vous êtes un OCR automobile ultra-spécialisé pour extraire plaques d\'immatriculation et VIN.'
           }
         });
 

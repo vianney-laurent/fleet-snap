@@ -2,6 +2,7 @@ import Head from 'next/head';
 import Header from './Header';
 import Footer from './Footer';
 import { useState, useEffect } from 'react';
+import { logger } from '../lib/logger';
 
 export default function Layout({ children }) {
     const [supportModalOpen, setSupportModalOpen] = useState(false);

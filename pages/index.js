@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from '../lib/logger';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -30,17 +31,29 @@ export default function LoginPage() {
     setError('');
     setInfoMessage('');
 
+    logger.info('Tentative de connexion initiée', { email });
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
     if (error) {
+      logger.auth.login(email, false, { 
+        error: error.message,
+        errorCode: error.status 
+      });
       setError('Email ou mot de passe incorrect.');
       return;
     }
 
     const user = data.user;
+    logger.auth.login(email, true, {
+      userId: user.id,
+      concession: user.user_metadata?.concession,
+      name: user.user_metadata?.name
+    });
+
     localStorage.setItem('userEmail', user.email);
     localStorage.setItem('userName', user.user_metadata?.name || '');
     localStorage.setItem('userConcession', user.user_metadata?.concession || '');
@@ -56,13 +69,17 @@ export default function LoginPage() {
     setForgotError('');
     setForgotSuccess('');
 
+    logger.info('Demande de réinitialisation mot de passe', { email: forgotEmail });
+
     const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
       redirectTo: `${window.location.origin}/reset-password`
     });
 
     if (error) {
+      logger.error('Erreur réinitialisation mot de passe', error, { email: forgotEmail });
       setForgotError(`Erreur : ${error.message}`);
     } else {
+      logger.info('Email de réinitialisation envoyé', { email: forgotEmail });
       setForgotSuccess('Un email de réinitialisation de mot de passe vous a été envoyé.');
     }
   };

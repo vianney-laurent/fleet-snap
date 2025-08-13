@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/router';
 import Layout from '../components/Layout';
-import { log } from 'next-axiom';
+import { logger } from '../lib/logger';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
@@ -26,12 +26,16 @@ export default function Inventory() {
   useEffect(() => {
     async function fetchUser() {
       const { data } = await supabase.auth.getUser();
-      log.info('Utilisateur récupéré depuis Supabase', { user: data.user });
       if (data?.user) {
         setUser(data.user);
+        logger.info('Utilisateur connecté sur inventaire', { 
+          userId: data.user.id,
+          email: data.user.email,
+          concession: data.user.user_metadata?.concession 
+        });
       } else {
-        router.push('/');
-        log.warn('Utilisateur non authentifié, redirection vers login');
+        router.push('/?reason=session-expired');
+        logger.auth.sessionExpired('unknown', { page: 'inventory' });
       }
     }
     fetchUser();
@@ -75,17 +79,27 @@ export default function Inventory() {
 
   // Ajout d'une nouvelle zone dans Supabase
   const handleAddZone = async () => {
-    log.info('handleAddZone démarré', { newZone });
     const trimmedZone = newZone.trim();
+    logger.info('Tentative ajout nouvelle zone', { 
+      userId: user?.id,
+      newZone: trimmedZone,
+      concession: user?.user_metadata?.concession 
+    });
+
     if (
       !trimmedZone ||
       zones.map(z => z.toLowerCase()).includes(trimmedZone.toLowerCase())
     ) {
-      log.warn('Nouvelle zone invalide ou déjà existante', { newZone: trimmedZone });
+      logger.warn('Zone invalide ou déjà existante', { 
+        userId: user?.id,
+        newZone: trimmedZone,
+        existingZones: zones.length 
+      });
       alert("Cette zone existe déjà ou le nom est vide.");
       return;
     }
     if (!user?.user_metadata?.concession) {
+      logger.error('Concession manquante pour création zone', { userId: user?.id });
       alert("Impossible de trouver la concession de l'utilisateur.");
       return;
     }
@@ -101,9 +115,16 @@ export default function Inventory() {
       setZone(trimmedZone);
       setNewZone('');
       setShowZoneInput(false);
-      log.info('Nouvelle zone ajoutée', { newZone: trimmedZone });
+      logger.info('Zone créée avec succès', { 
+        userId: user.id,
+        newZone: trimmedZone,
+        concession: user.user_metadata.concession 
+      });
     } else {
-      log.error('Erreur création de zone Supabase', { error });
+      logger.error('Erreur création zone Supabase', error, { 
+        userId: user.id,
+        newZone: trimmedZone 
+      });
       alert("Erreur lors de la création de la zone.");
     }
   };
@@ -111,18 +132,27 @@ export default function Inventory() {
   // Soumission du formulaire
   const handleSubmit = async (action) => {
     setSubmittingAction(action);
+    
+    logger.info('Début soumission inventaire', { 
+      userId: user?.id,
+      action,
+      zone,
+      hasPhoto: !!photo,
+      hasComment: !!comment 
+    });
+
     if (!photo) {
-      log.warn('handleSubmit: photo manquante');
+      logger.warn('Soumission sans photo', { userId: user?.id, action });
       alert('Veuillez ajouter une photo.');
       return;
     }
     if (!user) {
-      log.warn('handleSubmit: utilisateur manquant');
+      logger.warn('Soumission sans utilisateur', { action });
       alert('Utilisateur non chargé, veuillez vous reconnecter.');
       return;
     }
     if (!zone) {
-      log.warn('handleSubmit: zone non sélectionnée');
+      logger.warn('Soumission sans zone', { userId: user.id, action });
       alert('Merci de sélectionner une zone avant de poursuivre.');
       return;
     }
@@ -130,7 +160,10 @@ export default function Inventory() {
     // Récupération du token Supabase
     const { data: { session }, error: sessionError } = await supabase.auth.getSession();
     if (sessionError || !session) {
-      log.error('handleSubmit: session invalide', { sessionError });
+      logger.error('Session invalide pour soumission', sessionError, { 
+        userId: user.id, 
+        action 
+      });
       setLoading(false);
       alert('Session invalide, veuillez vous reconnecter.');
       return;
@@ -151,12 +184,23 @@ export default function Inventory() {
     setShowModal(false);
     setSubmittingAction(null);
     if (response.ok) {
-      log.info('Inventaire envoyé avec succès', { status: response.status });
+      logger.info('Inventaire envoyé avec succès', { 
+        userId: user.id,
+        action,
+        zone,
+        status: response.status,
+        hasComment: !!comment
+      });
       alert('Photo envoyée avec succès !');
       setPhoto(null);
       setComment('');
     } else {
-      log.error('Erreur envoi inventaire', { status: response.status });
+      logger.error('Erreur envoi inventaire', null, { 
+        userId: user.id,
+        action,
+        zone,
+        status: response.status
+      });
       alert("Erreur lors de l’envoi.");
     }
   };

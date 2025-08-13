@@ -1,1 +1,4 @@
-../supabase
+supabase/
+scripts/
+*.md
+.env.example

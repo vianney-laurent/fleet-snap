@@ -129,6 +129,10 @@ export default function History() {
   const [exportConcession, setExportConcession] = useState('');
   const [exportConcessionOptions, setExportConcessionOptions] = useState([]);
 
+  // Déclenchement manuel OCR
+  const [ocrTriggerLoading, setOcrTriggerLoading] = useState(false);
+  const [ocrTriggerMessage, setOcrTriggerMessage] = useState('');
+
   const router = useRouter();
 
   useEffect(() => {
@@ -395,6 +399,56 @@ export default function History() {
     }
   };
 
+  const handleManualOcrTrigger = async () => {
+    setOcrTriggerLoading(true);
+    setOcrTriggerMessage('');
+    
+    try {
+      logger.info('Déclenchement manuel OCR', { userId: user?.id });
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Session expirée');
+      }
+
+      const response = await fetch('/api/inventory/manual-trigger', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Erreur lors du déclenchement OCR');
+      }
+
+      const result = await response.json();
+      setOcrTriggerMessage(result.message);
+      
+      logger.info('OCR déclenché manuellement avec succès', {
+        userId: user?.id,
+        result
+      });
+
+      // Rafraîchir les données après 2 secondes
+      setTimeout(() => {
+        fetchRecords();
+      }, 2000);
+
+    } catch (error) {
+      logger.error('Erreur déclenchement manuel OCR', error, { userId: user?.id });
+      setOcrTriggerMessage(`Erreur: ${error.message}`);
+    } finally {
+      setOcrTriggerLoading(false);
+      // Effacer le message après 5 secondes
+      setTimeout(() => {
+        setOcrTriggerMessage('');
+      }, 5000);
+    }
+  };
+
   const handleExport = async () => {
     setExportLoading(true);
     setExportError('');
@@ -478,6 +532,19 @@ export default function History() {
           >
             📤 Exporter
           </button>
+          
+          <button
+            onClick={handleManualOcrTrigger}
+            disabled={ocrTriggerLoading}
+            className={`ml-2 px-4 py-2 font-medium text-sm rounded-full shadow-md transition-shadow transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              ocrTriggerLoading 
+                ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
+                : 'bg-purple-500 hover:bg-purple-600 text-white focus:ring-purple-500'
+            }`}
+            title="Déclencher le traitement OCR pour les photos en attente"
+          >
+            {ocrTriggerLoading ? '⏳ OCR...' : '🔍 OCR'}
+          </button>
         </div>
 
         {/* Bouton filtre - Mobile */}
@@ -537,6 +604,17 @@ export default function History() {
         </div>
 
         {error && <p className="text-red-500 mb-4">{error}</p>}
+        
+        {/* Message de statut OCR */}
+        {ocrTriggerMessage && (
+          <div className={`mb-4 p-3 rounded-md ${
+            ocrTriggerMessage.includes('Erreur') 
+              ? 'bg-red-100 text-red-700 border border-red-200' 
+              : 'bg-green-100 text-green-700 border border-green-200'
+          }`}>
+            {ocrTriggerMessage}
+          </div>
+        )}
 
         {/* Message d'information pour les erreurs */}
         {filteredRecords.some(r => r.status === 'error') && statusFilter.includes('error') && (

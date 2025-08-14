@@ -281,25 +281,130 @@ async function handler(req, res) {
         pendingRecords: insertedCount
       });
       
-      // Appel asynchrone sans attendre la réponse
-      const baseUrl = req.headers.origin || 
-                     `${req.headers['x-forwarded-proto'] || 'http'}://${req.headers.host}` ||
-                     'http://localhost:3000';
-      
-      fetch(`${baseUrl}/api/inventory/triggerOcr`, {
-        method: 'GET',
-        headers: {
-          'User-Agent': 'FleetSnap-Auto-Trigger',
-          'X-Triggered-By': 'bulk-upload',
-          'X-User-Id': user_id,
-          'X-Record-Count': insertedCount.toString()
+      // Stratégie robuste pour construire l'URL de base sur Vercel
+      const getBaseUrl = () => {
+        // 1. Priorité à l'origin header (le plus fiable)
+        if (req.headers.origin) {
+          return req.headers.origin;
         }
-      }).catch(error => {
-        logger.warn('Erreur déclenchement OCR asynchrone', { 
-          userId: user_id,
-          error: error.message 
-        });
+        
+        // 2. Construire depuis les headers Vercel
+        if (process.env.VERCEL) {
+          // En production Vercel, utiliser VERCEL_URL ou VERCEL_BRANCH_URL
+          if (process.env.VERCEL_URL) {
+            return `https://${process.env.VERCEL_URL}`;
+          }
+          if (process.env.VERCEL_BRANCH_URL) {
+            return `https://${process.env.VERCEL_BRANCH_URL}`;
+          }
+          // Fallback avec le host header
+          if (req.headers.host) {
+            return `https://${req.headers.host}`;
+          }
+        }
+        
+        // 3. Construire depuis les headers de forwarding
+        if (req.headers['x-forwarded-host']) {
+          const proto = req.headers['x-forwarded-proto'] || 'https';
+          return `${proto}://${req.headers['x-forwarded-host']}`;
+        }
+        
+        // 4. Fallback avec host header
+        if (req.headers.host) {
+          const proto = req.headers['x-forwarded-proto'] || 'http';
+          return `${proto}://${req.headers.host}`;
+        }
+        
+        // 5. Fallback local
+        return 'http://localhost:3000';
+      };
+      
+      const baseUrl = getBaseUrl();
+      const triggerUrl = `${baseUrl}/api/inventory/triggerOcr`;
+      
+      logger.info('URL de déclenchement OCR construite', {
+        userId: user_id,
+        baseUrl,
+        triggerUrl,
+        headers: {
+          origin: req.headers.origin,
+          host: req.headers.host,
+          'x-forwarded-host': req.headers['x-forwarded-host'],
+          'x-forwarded-proto': req.headers['x-forwarded-proto']
+        },
+        env: {
+          VERCEL: process.env.VERCEL,
+          VERCEL_URL: process.env.VERCEL_URL,
+          VERCEL_BRANCH_URL: process.env.VERCEL_BRANCH_URL
+        }
       });
+      
+      // Appel asynchrone avec timeout et retry
+      const triggerOcr = async () => {
+        try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
+          
+          const response = await fetch(triggerUrl, {
+            method: 'GET',
+            headers: {
+              'User-Agent': 'FleetSnap-Auto-Trigger',
+              'X-Triggered-By': 'bulk-upload',
+              'X-User-Id': user_id,
+              'X-Record-Count': insertedCount.toString()
+            },
+            signal: controller.signal
+          });
+          
+          clearTimeout(timeoutId);
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const result = await response.text();
+          logger.info('OCR déclenché avec succès', {
+            userId: user_id,
+            triggerUrl,
+            responseStatus: response.status,
+            responsePreview: result.substring(0, 200)
+          });
+          
+        } catch (error) {
+          logger.warn('Erreur déclenchement OCR asynchrone', { 
+            userId: user_id,
+            triggerUrl,
+            error: error.message,
+            errorType: error.name
+          });
+          
+          // Retry avec une URL alternative si c'est un problème de réseau
+          if (error.name === 'AbortError' || error.message.includes('fetch')) {
+            logger.info('Tentative de retry avec URL alternative', { userId: user_id });
+            
+            // Essayer avec localhost si on est en développement
+            if (process.env.NODE_ENV === 'development') {
+              try {
+                await fetch('http://localhost:3000/api/inventory/triggerOcr', {
+                  method: 'GET',
+                  headers: {
+                    'User-Agent': 'FleetSnap-Auto-Trigger-Retry',
+                    'X-Triggered-By': 'bulk-upload-retry',
+                    'X-User-Id': user_id,
+                    'X-Record-Count': insertedCount.toString()
+                  }
+                });
+                logger.info('Retry OCR réussi avec localhost', { userId: user_id });
+              } catch (retryError) {
+                logger.error('Retry OCR échoué', retryError, { userId: user_id });
+              }
+            }
+          }
+        }
+      };
+      
+      // Lancer le déclenchement sans bloquer la réponse
+      triggerOcr();
     }
 
     // Enregistrer les métriques globales

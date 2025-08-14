@@ -18,28 +18,31 @@ if [ ! -f "supabase/functions/process-ocr/index.ts" ]; then
     exit 1
 fi
 
-# Déployer la fonction
-echo "📤 Déploiement en cours..."
-supabase functions deploy process-ocr
+# Déployer la fonction v2 (version corrigée)
+echo "📤 Déploiement de process-ocr-v2 en cours..."
+supabase functions deploy process-ocr-v2
 
 if [ $? -eq 0 ]; then
-    echo "✅ Edge Function déployée avec succès!"
+    echo "✅ Edge Function v2 déployée avec succès!"
     echo ""
     echo "🔧 Configuration requise dans Supabase Dashboard:"
-    echo "   1. Aller dans Edge Functions > process-ocr"
+    echo "   1. Aller dans Edge Functions > process-ocr-v2"
     echo "   2. Ajouter les variables d'environnement:"
     echo "      - GEMINI_API_KEY: votre clé API Gemini"
     echo "      - SUPABASE_URL: URL de votre projet Supabase"
     echo "      - SUPABASE_SERVICE_ROLE_KEY: clé service role"
     echo ""
     echo "🌐 URL de la fonction:"
-    echo "   https://[votre-projet].supabase.co/functions/v1/process-ocr"
+    echo "   https://[votre-projet].supabase.co/functions/v1/process-ocr-v2"
     echo ""
     echo "🧪 Test de la fonction:"
-    echo "   curl -X POST https://[votre-projet].supabase.co/functions/v1/process-ocr \\"
+    echo "   curl -X POST https://[votre-projet].supabase.co/functions/v1/process-ocr-v2 \\"
     echo "        -H 'Authorization: Bearer [service-role-key]' \\"
     echo "        -H 'Content-Type: application/json' \\"
     echo "        -d '{\"source\":\"test\"}'"
+    echo ""
+    echo "🔄 Optionnel: Déployer aussi l'ancienne version comme backup"
+    echo "   supabase functions deploy process-ocr"
 else
     echo "❌ Erreur lors du déploiement"
     exit 1

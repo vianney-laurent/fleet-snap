@@ -53,7 +53,7 @@ async function handler(req, res) {
     let response;
     let result;
     
-    // 1. Priorité à l'Edge Function Supabase
+    // 1. Priorité à l'Edge Function Supabase v2
     if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
       const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-ocr`;
       

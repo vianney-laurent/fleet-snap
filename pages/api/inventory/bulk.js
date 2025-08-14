@@ -284,7 +284,7 @@ async function handler(req, res) {
       // Stratégie hybride : Edge Function Supabase + Fallback API interne
       const triggerOcr = async () => {
         try {
-          // 1. Priorité à l'Edge Function Supabase (fonctionne toujours)
+          // 1. Priorité à l'Edge Function Supabase v2 (version corrigée)
           if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
             const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-ocr`;
             

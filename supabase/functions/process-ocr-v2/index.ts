@@ -6,6 +6,22 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Fonction utilitaire pour convertir ArrayBuffer en base64 de manière sécurisée
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer)
+  const len = bytes.byteLength
+  let binary = ''
+  
+  // Traiter par petits chunks pour éviter le stack overflow
+  const chunkSize = 1024
+  for (let i = 0; i < len; i += chunkSize) {
+    const chunk = bytes.subarray(i, Math.min(i + chunkSize, len))
+    binary += String.fromCharCode(...chunk)
+  }
+  
+  return btoa(binary)
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -18,17 +34,21 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     const geminiApiKey = Deno.env.get('GEMINI_API_KEY')!
     
+    if (!supabaseUrl || !supabaseServiceKey || !geminiApiKey) {
+      throw new Error('Variables d\'environnement manquantes')
+    }
+    
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    console.log('🚀 Démarrage traitement OCR Edge Function')
+    console.log('🚀 Démarrage traitement OCR Edge Function v2')
 
-    // 1. Fetch pending records (limité à 20 pour éviter timeout)
+    // 1. Fetch pending records (limité à 10 pour éviter timeout)
     const { data: pendingRecords, error: fetchError } = await supabase
       .from('inventaire')
       .select('id, photo_url, zone, concession, created_at')
       .eq('status', 'pending')
       .order('created_at', { ascending: true })
-      .limit(20)
+      .limit(10)
     
     if (fetchError) {
       console.error('Erreur récupération records pending:', fetchError)
@@ -42,7 +62,7 @@ serve(async (req) => {
         JSON.stringify({ 
           processedCount: 0,
           message: 'Aucun enregistrement en attente',
-          source: 'edge-function'
+          source: 'edge-function-v2'
         }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -54,7 +74,7 @@ serve(async (req) => {
     let processedCount = 0
     let errorCount = 0
 
-    // 2. Traiter chaque record
+    // 2. Traiter chaque record séquentiellement (plus stable)
     for (const record of pendingRecords) {
       try {
         console.log(`🔄 Traitement record ${record.id}`)
@@ -64,17 +84,16 @@ serve(async (req) => {
           .from('inventaire')
           .update({ status: 'processing' })
           .eq('id', record.id)
-          .eq('status', 'pending') // Condition pour éviter les doublons
+          .eq('status', 'pending')
         
         if (claimError) {
           console.warn(`⚠️ Impossible de réclamer le record ${record.id}:`, claimError.message)
           continue
         }
 
-        // Download image avec gestion d'erreur robuste
-        console.log(`📥 Téléchargement image ${record.id}: ${record.photo_url}`)
+        // Download image avec timeout
+        console.log(`📥 Téléchargement ${record.photo_url.substring(0, 100)}...`)
         
-        // Download avec timeout pour éviter les blocages
         const controller = new AbortController()
         const timeoutId = setTimeout(() => controller.abort(), 30000) // 30s timeout
         
@@ -82,8 +101,9 @@ serve(async (req) => {
           signal: controller.signal
         })
         clearTimeout(timeoutId)
+        
         if (!imgRes.ok) {
-          console.warn(`❌ Échec téléchargement image ${record.id}: ${imgRes.status}`)
+          console.warn(`❌ Échec téléchargement ${record.id}: ${imgRes.status}`)
           
           await supabase
             .from('inventaire')
@@ -97,10 +117,10 @@ serve(async (req) => {
         const arrayBuffer = await imgRes.arrayBuffer()
         const imageSize = arrayBuffer.byteLength
         
-        console.log(`📊 Image téléchargée ${record.id}: ${imageSize} bytes`)
+        console.log(`📊 Image téléchargée ${record.id}: ${Math.round(imageSize/1024)}KB`)
         
-        // Vérifier la taille de l'image (limite plus stricte pour éviter les timeouts)
-        if (imageSize > 10 * 1024 * 1024) { // 10MB max
+        // Vérifier la taille (limite Gemini: 20MB)
+        if (imageSize > 20 * 1024 * 1024) {
           console.warn(`❌ Image trop grande ${record.id}: ${Math.round(imageSize/1024/1024)}MB`)
           
           await supabase
@@ -112,55 +132,19 @@ serve(async (req) => {
           continue
         }
         
-        // Conversion base64 optimisée pour Deno
+        // Conversion base64 sécurisée
         console.log(`🔄 Conversion base64 ${record.id}...`)
+        const base64Image = arrayBufferToBase64(arrayBuffer)
+        console.log(`✅ Base64 OK ${record.id}: ${Math.round(base64Image.length/1024)}KB`)
         
-        let base64Image: string
-        let mimeType: string
-        
-        try {
-          // Méthode la plus simple et efficace pour Deno
-          const bytes = new Uint8Array(arrayBuffer)
-          
-          // Convertir en base64 par chunks pour éviter les problèmes de mémoire
-          const chunkSize = 1024 * 1024 // 1MB chunks
-          let base64Parts: string[] = []
-          
-          for (let i = 0; i < bytes.length; i += chunkSize) {
-            const chunk = bytes.slice(i, i + chunkSize)
-            let binaryString = ''
-            
-            // Convertir le chunk en string binaire
-            for (let j = 0; j < chunk.length; j++) {
-              binaryString += String.fromCharCode(chunk[j])
-            }
-            
-            base64Parts.push(btoa(binaryString))
-          }
-          
-          base64Image = base64Parts.join('')
-          console.log(`✅ Base64 converti ${record.id}: ${Math.round(base64Image.length/1024)}KB`)
-          
-          // Détection du mimeType
-          const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
-          mimeType = contentType.startsWith('image/') ? contentType : 'image/jpeg'
-
-          console.log(`📷 Image prête ${record.id}: ${mimeType}, ${Math.round(imageSize/1024)}KB`)
-          
-        } catch (base64Error) {
-          console.error(`❌ Erreur conversion base64 ${record.id}:`, base64Error.message)
-          
-          await supabase
-            .from('inventaire')
-            .update({ status: 'error', identifiant: 'BASE64_ERROR' })
-            .eq('id', record.id)
-          
-          errorCount++
-          continue
-        }
+        // Détection du mimeType
+        const contentType = imgRes.headers.get('content-type') || 'image/jpeg'
+        const mimeType = contentType.startsWith('image/') ? contentType : 'image/jpeg'
 
         // OCR via Gemini Flash
+        console.log(`🤖 OCR Gemini ${record.id}...`)
         const ocrStartTime = Date.now()
+        
         const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiApiKey}`, {
           method: 'POST',
           headers: {
@@ -182,7 +166,8 @@ serve(async (req) => {
         const ocrDuration = Date.now() - ocrStartTime
 
         if (!geminiResponse.ok) {
-          console.error(`❌ Erreur Gemini ${record.id}: ${geminiResponse.status}`)
+          const errorText = await geminiResponse.text()
+          console.error(`❌ Erreur Gemini ${record.id}: ${geminiResponse.status} - ${errorText}`)
           
           await supabase
             .from('inventaire')
@@ -205,15 +190,16 @@ serve(async (req) => {
           .eq('id', record.id)
         
         if (updateError) {
-          console.error(`❌ Erreur mise à jour record ${record.id}:`, updateError)
+          console.error(`❌ Erreur mise à jour ${record.id}:`, updateError)
           errorCount++
           continue
         }
 
         processedCount++
+        console.log(`🎯 Record ${record.id} traité avec succès`)
 
       } catch (error) {
-        console.error(`❌ Erreur traitement record ${record.id}:`, error)
+        console.error(`❌ Erreur traitement record ${record.id}:`, error.message)
         
         // Marquer comme erreur
         await supabase
@@ -232,7 +218,7 @@ serve(async (req) => {
         processedCount,
         errorCount,
         totalRecords: pendingRecords.length,
-        source: 'edge-function',
+        source: 'edge-function-v2',
         message: `${processedCount} photo(s) traitée(s) avec succès${errorCount > 0 ? `, ${errorCount} erreur(s)` : ''}`
       }),
       { 
@@ -242,12 +228,12 @@ serve(async (req) => {
     )
 
   } catch (error) {
-    console.error('❌ Erreur Edge Function:', error)
+    console.error('❌ Erreur Edge Function v2:', error.message)
     
     return new Response(
       JSON.stringify({ 
         error: error.message,
-        source: 'edge-function'
+        source: 'edge-function-v2'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

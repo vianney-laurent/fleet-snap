@@ -49,34 +49,76 @@ async function handler(req, res) {
       });
     }
 
-    // Construire l'URL pour l'appel interne
-    const baseUrl = req.headers.origin || 
-                   `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}` ||
-                   'http://localhost:3000';
+    // Stratégie hybride : Edge Function Supabase + Fallback API interne
+    let response;
+    let result;
     
-    const triggerUrl = `${baseUrl}/api/inventory/triggerOcr`;
-    
-    logger.info('Appel OCR manuel', {
-      userId: user.id,
-      triggerUrl,
-      pendingCount: pendingRecords.length
-    });
+    // 1. Priorité à l'Edge Function Supabase
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-ocr`;
+      
+      logger.info('Déclenchement manuel Edge Function', {
+        userId: user.id,
+        edgeFunctionUrl: edgeFunctionUrl.substring(0, 50) + '...',
+        pendingCount: pendingRecords.length
+      });
 
-    // Appel synchrone pour le déclenchement manuel
-    const response = await fetch(triggerUrl, {
-      method: 'GET',
-      headers: {
-        'User-Agent': 'FleetSnap-Manual-Trigger',
-        'X-Triggered-By': 'manual',
-        'X-User-Id': user.id
+      try {
+        response = await fetch(edgeFunctionUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'FleetSnap-Manual-Trigger',
+            'X-Triggered-By': 'manual',
+            'X-User-Id': user.id
+          },
+          body: JSON.stringify({
+            source: 'manual-trigger',
+            userId: user.id
+          })
+        });
+
+        if (response.ok) {
+          result = await response.json();
+          logger.info('Edge Function manuelle réussie', {
+            userId: user.id,
+            result
+          });
+        } else {
+          throw new Error(`Edge Function error: ${response.status} ${response.statusText}`);
+        }
+      } catch (edgeError) {
+        logger.warn('Edge Function échouée, tentative fallback', {
+          userId: user.id,
+          error: edgeError.message
+        });
+        
+        // 2. Fallback : API interne
+        const baseUrl = req.headers.origin || 
+                       `${req.headers['x-forwarded-proto'] || 'https'}://${req.headers.host}` ||
+                       'http://localhost:3000';
+        
+        const triggerUrl = `${baseUrl}/api/inventory/triggerOcr`;
+        
+        response = await fetch(triggerUrl, {
+          method: 'GET',
+          headers: {
+            'User-Agent': 'FleetSnap-Manual-Trigger-Fallback',
+            'X-Triggered-By': 'manual-fallback',
+            'X-User-Id': user.id
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`Fallback API error: ${response.status} ${response.statusText}`);
+        }
+
+        result = await response.json();
       }
-    });
-
-    if (!response.ok) {
-      throw new Error(`Erreur déclenchement OCR: ${response.status} ${response.statusText}`);
+    } else {
+      throw new Error('Configuration Supabase manquante');
     }
-
-    const result = await response.json();
     
     logger.info('OCR manuel déclenché avec succès', {
       userId: user.id,

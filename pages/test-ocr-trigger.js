@@ -87,6 +87,47 @@ export default function TestOcrTrigger() {
     }
   };
 
+  const testEdgeFunction = async () => {
+    setTestLoading(true);
+    
+    try {
+      const edgeFunctionUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/process-ocr`;
+      
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          source: 'direct-test',
+          userId: user?.id || 'test-user'
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        alert(`✅ Edge Function OK: ${result.message}`);
+      } else {
+        alert(`❌ Edge Function Error: ${result.error || 'Erreur inconnue'}`);
+      }
+      
+      // Recompter les pending
+      const { data: pendingRecords } = await supabase
+        .from('inventaire')
+        .select('id')
+        .eq('status', 'pending');
+      
+      setPendingCount(pendingRecords?.length || 0);
+      
+    } catch (error) {
+      alert(`❌ Erreur Edge Function: ${error.message}`);
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -144,7 +185,7 @@ export default function TestOcrTrigger() {
               <div>
                 <h3 className="font-semibold">Test Déclenchement Manuel</h3>
                 <p className="text-sm text-gray-600">
-                  Déclenche manuellement le traitement OCR
+                  Déclenche manuellement le traitement OCR (API hybride)
                 </p>
               </div>
               <button
@@ -153,6 +194,22 @@ export default function TestOcrTrigger() {
                 className="px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg disabled:bg-gray-400"
               >
                 {testLoading ? '⏳ OCR...' : '🚀 Déclencher'}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <h3 className="font-semibold">Test Edge Function Directe</h3>
+                <p className="text-sm text-gray-600">
+                  Teste directement l'Edge Function Supabase
+                </p>
+              </div>
+              <button
+                onClick={testEdgeFunction}
+                disabled={testLoading || pendingCount === 0}
+                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:bg-gray-400"
+              >
+                {testLoading ? '⏳ Test...' : '⚡ Edge Function'}
               </button>
             </div>
           </div>

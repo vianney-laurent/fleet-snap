@@ -135,6 +135,42 @@ export default function History() {
 
   const router = useRouter();
 
+  // Fonction pour rafraîchir les données
+  const refreshData = async () => {
+    if (!user) return;
+    
+    setLoading(true);
+    try {
+      const userName = user.user_metadata?.name || '';
+      const queryParams = new URLSearchParams({
+        collaborateur: userName,
+        page: currentPage,
+        limit: 10,
+      });
+
+      if (startDate) {
+        startDate.setHours(0, 0, 0, 0);
+        queryParams.append('startDate', startDate.toISOString().split('T')[0]);
+      }
+      if (endDate) {
+        endDate.setHours(23, 59, 59, 999);
+        queryParams.append('endDate', endDate.toISOString().split('T')[0]);
+      }
+
+      const response = await fetch(`/api/history?${queryParams.toString()}`);
+      if (!response.ok) throw new Error(`Erreur API: ${response.status}`);
+
+      const { records, totalPages } = await response.json();
+      setRecords(records || []);
+      setTotalPages(totalPages);
+    } catch (err) {
+      logger.error('Erreur rafraîchissement historique', err, { userId: user.id });
+      setError('Impossible de récupérer les données.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     async function fetchUserAndData() {
       const { data: userData } = await supabase.auth.getUser();
@@ -149,8 +185,9 @@ export default function History() {
         return;
       }
       setUser(userData.user);
+      
+      // Charger les données directement ici
       const userName = userData.user.user_metadata?.name || '';
-
       try {
         const queryParams = new URLSearchParams({
           collaborateur: userName,
@@ -197,7 +234,14 @@ export default function History() {
     }
 
     fetchUserAndData();
-  }, [router, user?.id, currentPage, startDate, endDate]);
+  }, [router]);
+
+  // Rafraîchir les données quand les filtres changent
+  useEffect(() => {
+    if (user) {
+      refreshData();
+    }
+  }, [user?.id, currentPage, startDate, endDate]);
 
   useEffect(() => {
     async function fetchConcessions() {
@@ -434,7 +478,7 @@ export default function History() {
 
       // Rafraîchir les données après 2 secondes
       setTimeout(() => {
-        fetchRecords();
+        refreshData();
       }, 2000);
 
     } catch (error) {

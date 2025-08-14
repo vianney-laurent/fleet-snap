@@ -1,49 +1,77 @@
 #!/bin/bash
 
-# Script de déploiement de l'Edge Function Supabase pour le traitement OCR
+# Script de déploiement de l'Edge Function OCR (version nettoyée)
 
 echo "🚀 Déploiement de l'Edge Function process-ocr..."
 
-# Vérifier que Supabase CLI est installé
+# Vérifier Supabase CLI
 if ! command -v supabase &> /dev/null; then
-    echo "❌ Supabase CLI n'est pas installé"
+    echo "❌ Supabase CLI manquant"
     echo "📦 Installation: npm install -g supabase"
     exit 1
 fi
 
-# Vérifier que nous sommes dans le bon répertoire
+# Vérifier le fichier
 if [ ! -f "supabase/functions/process-ocr/index.ts" ]; then
     echo "❌ Fichier Edge Function non trouvé"
-    echo "📁 Assurez-vous d'être dans le répertoire racine du projet"
     exit 1
 fi
 
-# Déployer la fonction v2 (version corrigée)
-echo "📤 Déploiement de process-ocr-v2 en cours..."
-supabase functions deploy process-ocr-v2
+# Déployer les fonctions
+echo "📤 Déploiement process-ocr..."
+supabase functions deploy process-ocr &
+PID1=$!
 
-if [ $? -eq 0 ]; then
-    echo "✅ Edge Function v2 déployée avec succès!"
-    echo ""
-    echo "🔧 Configuration requise dans Supabase Dashboard:"
-    echo "   1. Aller dans Edge Functions > process-ocr-v2"
-    echo "   2. Ajouter les variables d'environnement:"
-    echo "      - GEMINI_API_KEY: votre clé API Gemini"
-    echo "      - SUPABASE_URL: URL de votre projet Supabase"
-    echo "      - SUPABASE_SERVICE_ROLE_KEY: clé service role"
-    echo ""
-    echo "🌐 URL de la fonction:"
-    echo "   https://[votre-projet].supabase.co/functions/v1/process-ocr-v2"
-    echo ""
-    echo "🧪 Test de la fonction:"
-    echo "   curl -X POST https://[votre-projet].supabase.co/functions/v1/process-ocr-v2 \\"
-    echo "        -H 'Authorization: Bearer [service-role-key]' \\"
-    echo "        -H 'Content-Type: application/json' \\"
-    echo "        -d '{\"source\":\"test\"}'"
-    echo ""
-    echo "🔄 Optionnel: Déployer aussi l'ancienne version comme backup"
-    echo "   supabase functions deploy process-ocr"
+echo "📤 Déploiement test-gemini..."
+supabase functions deploy test-gemini &
+PID2=$!
+
+echo "📤 Déploiement cron-ocr..."
+supabase functions deploy cron-ocr &
+PID3=$!
+
+# Attendre les déploiements
+wait $PID1
+RESULT1=$?
+
+wait $PID2
+RESULT2=$?
+
+wait $PID3
+RESULT3=$?
+
+echo ""
+if [ $RESULT1 -eq 0 ]; then
+    echo "✅ process-ocr déployé"
 else
-    echo "❌ Erreur lors du déploiement"
-    exit 1
+    echo "❌ Erreur process-ocr"
 fi
+
+if [ $RESULT2 -eq 0 ]; then
+    echo "✅ test-gemini déployé"
+else
+    echo "❌ Erreur test-gemini"
+fi
+
+if [ $RESULT3 -eq 0 ]; then
+    echo "✅ cron-ocr déployé"
+else
+    echo "❌ Erreur cron-ocr"
+fi
+
+echo ""
+echo "🎯 Architecture avec cron:"
+echo "   📋 process-ocr: Traitement OCR principal"
+echo "   🧪 test-gemini: Test API Gemini"
+echo "   🕐 cron-ocr: Cron de sécurité (toutes les 5min)"
+echo ""
+echo "🔧 Configuration Supabase Dashboard:"
+echo "   Variables d'environnement à ajouter:"
+echo "   - GEMINI_API_KEY"
+echo "   - SUPABASE_URL" 
+echo "   - SUPABASE_SERVICE_ROLE_KEY"
+echo ""
+echo "🧪 Tests:"
+echo "   1. /test-ocr-trigger → Test Gemini"
+echo "   2. /test-ocr-trigger → Test Edge Function"
+echo "   3. Upload photos → Auto-trigger"

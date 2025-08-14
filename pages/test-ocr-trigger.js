@@ -128,6 +128,35 @@ export default function TestOcrTrigger() {
     }
   };
 
+  const testGeminiApi = async () => {
+    setTestLoading(true);
+    
+    try {
+      const geminiTestUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/test-gemini`;
+      
+      const response = await fetch(geminiTestUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (response.ok) {
+        alert(`✅ Gemini API OK: ${result.geminiResponse}\n\nClé API: ${result.apiKeyLength} caractères`);
+      } else {
+        alert(`❌ Gemini API Error: ${result.error}\n\nDétails: ${result.details || 'Aucun détail'}`);
+      }
+      
+    } catch (error) {
+      alert(`❌ Erreur test Gemini: ${error.message}`);
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
   if (loading) {
     return (
       <Layout>
@@ -210,6 +239,22 @@ export default function TestOcrTrigger() {
                 className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg disabled:bg-gray-400"
               >
                 {testLoading ? '⏳ Test...' : '⚡ Edge Function'}
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div>
+                <h3 className="font-semibold">Test API Gemini</h3>
+                <p className="text-sm text-gray-600">
+                  Teste la connexion à l'API Gemini
+                </p>
+              </div>
+              <button
+                onClick={testGeminiApi}
+                disabled={testLoading}
+                className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg disabled:bg-gray-400"
+              >
+                {testLoading ? '⏳ Test...' : '🤖 Gemini'}
               </button>
             </div>
           </div>

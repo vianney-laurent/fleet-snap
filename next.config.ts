@@ -6,8 +6,8 @@ const nextConfig: NextConfig = {
 
   // Configuration pour gérer les gros uploads
   experimental: {
-    // Augmenter la limite de taille des requêtes
-    isrMemoryCacheSize: 0,
+    // Configuration pour Next.js 15
+    serverComponentsExternalPackages: ['formidable'],
   },
 
   // Ignorer les Edge Functions Supabase lors du build
@@ -33,10 +33,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: false,
   },
 
-  // Configuration des API routes pour les gros uploads
-  serverRuntimeConfig: {
-    maxRequestSize: '50mb'
-  },
+  // Configuration pour les gros uploads (géré par vercel.json)
 
   // Headers pour les gros uploads
   async headers() {

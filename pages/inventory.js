@@ -140,6 +140,24 @@ export default function Inventory() {
       return;
     }
 
+    // Vérification de taille pour Vercel
+    const isVercel = window.location.hostname.includes('vercel.app');
+    if (isVercel) {
+      const totalSize = photos.reduce((sum, photo) => sum + photo.size, 0);
+      const maxSize = 4 * 1024 * 1024; // 4MB limite Vercel
+      
+      if (totalSize > maxSize) {
+        const sizeMB = Math.round(totalSize / 1024 / 1024 * 10) / 10;
+        alert(`Fichiers trop volumineux (${sizeMB}MB). Limitez-vous à 4MB total ou envoyez moins de photos.`);
+        return;
+      }
+      
+      if (photos.length > 5) {
+        alert('Sur Vercel, limitez-vous à 5 photos maximum par envoi.');
+        return;
+      }
+    }
+
     setSubmittingAction(action || null);
     setLoading(true);
 

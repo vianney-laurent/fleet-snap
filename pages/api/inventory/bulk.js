@@ -6,7 +6,16 @@ import { withApiLogging, logger } from '../../../lib/logger';
 import { metricsCollector } from '../../../lib/monitoring';
 
 // Disable Next.js default body parsing for multipart/form-data
-export const config = { api: { bodyParser: false } };
+export const config = { 
+  api: { 
+    bodyParser: false,
+    // Augmenter les limites pour Vercel
+    responseLimit: false,
+    externalResolver: true,
+  },
+  // Timeout plus long pour les gros uploads
+  maxDuration: 60,
+};
 
 // Supabase server-side client with Service Role Key
 const supabase = createClient(

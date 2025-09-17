@@ -8,13 +8,36 @@ const supabaseAdmin = createClient(
 
 export default async function handler(req, res) {
     if (req.method === 'GET') {
-        const { data, error } = await supabaseAdmin.auth.admin.listUsers();
+        try {
+            let allUsers = [];
+            let page = 1;
+            let hasMore = true;
+            const perPage = 1000; // Limite maximale par page
 
-        if (error) {
-            return res.status(500).json({ error: error.message });
+            while (hasMore) {
+                const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+                    page: page,
+                    perPage: perPage
+                });
+
+                if (error) {
+                    return res.status(500).json({ error: error.message });
+                }
+
+                allUsers = allUsers.concat(data.users);
+                
+                // Si on a moins d'utilisateurs que la limite, on a tout récupéré
+                hasMore = data.users.length === perPage;
+                page++;
+            }
+
+            return res.status(200).json({ 
+                users: allUsers,
+                total: allUsers.length 
+            });
+        } catch (error) {
+            return res.status(500).json({ error: 'Erreur lors de la récupération des utilisateurs' });
         }
-
-        return res.status(200).json({ users: data.users });
     }
 
     res.status(405).json({ error: 'Méthode non autorisée' });

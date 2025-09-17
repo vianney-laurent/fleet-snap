@@ -274,7 +274,7 @@ export default function Admin() {
   };
 
   const handleSendPasswordReset = async () => {
-    const response = await fetch('/api/resetPassword', {
+    const response = await fetch('/api/resetPasswordWithBrevo', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: selectedUser.email })
@@ -702,16 +702,17 @@ export default function Admin() {
                           <button
                             onClick={async () => {
                               setSelectedUser(user);
-                              const response = await fetch('/api/resetPassword', {
+                              const response = await fetch('/api/resetPasswordWithBrevo', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ email: user.email })
                               });
                               const result = await response.json();
                               if (response.ok) {
-                                alert(`Email de réinitialisation envoyé à ${user.email}`);
+                                alert(`✅ Email de réinitialisation envoyé à ${user.email}`);
                               } else {
-                                alert(result.error || 'Erreur lors de l\'envoi de l\'email');
+                                alert(`❌ ${result.error || 'Erreur lors de l\'envoi de l\'email'}`);
+                                console.error('Détails:', result.details);
                               }
                             }}
                             className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"

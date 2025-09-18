@@ -416,15 +416,20 @@ export default function Admin() {
 
   return (
     <Layout>
-      <div className="p-6 max-w-2xl mx-auto space-y-6">
+      <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
         <h1 className="text-2xl font-semibold">Administration</h1>
 
+        {/* Navigation responsive */}
         <div className="border-b border-gray-200">
-          <nav className="flex space-x-4">
+          <nav className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
             {['createUser', 'editUser', 'settings'].map(tab => (
               <button
                 key={tab}
-                className={`py-2 px-4 ${activeTab === tab ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-600'}`}
+                className={`py-3 px-4 rounded-lg sm:rounded-none text-sm font-medium transition-colors ${
+                  activeTab === tab 
+                    ? 'bg-blue-100 text-blue-600 sm:bg-transparent sm:border-b-2 sm:border-blue-600' 
+                    : 'text-gray-600 hover:bg-gray-50 sm:hover:bg-transparent'
+                }`}
                 onClick={() => {
                   setActiveTab(tab);
                   if (tab === 'createUser') {
@@ -644,13 +649,26 @@ export default function Admin() {
 
               {/* Barre de recherche */}
               <div className="mb-4">
-                <input
-                  type="text"
-                  placeholder="Rechercher par nom, email ou concession..."
-                  value={searchTerm}
-                  onChange={(e) => handleSearchChange(e.target.value)}
-                  className="border border-gray-300 rounded-md p-2 w-full focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-300"
-                />
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Rechercher par nom, email ou concession..."
+                    value={searchTerm}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    className="border border-gray-300 rounded-lg p-3 pl-10 w-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  />
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+                    🔍
+                  </div>
+                  {searchTerm && (
+                    <button
+                      onClick={() => handleSearchChange('')}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Informations sur les résultats */}
@@ -667,22 +685,75 @@ export default function Admin() {
 
               {loadingUsers ? <p>Chargement...</p> : (
                 <>
-                  <div className="grid grid-cols-1 gap-3">
+                  <div className="grid grid-cols-1 gap-4">
                     {currentUsers.map((user) => (
                       <div
                         key={user.id}
-                        className="flex items-center justify-between bg-white p-4 border rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer hover:bg-gray-50"
+                        className="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
                       >
-                        <div className="flex-1">
+                        {/* Desktop Layout */}
+                        <div className="hidden sm:flex items-center justify-between p-4">
+                          <div className="flex-1">
+                            <div className="flex items-center space-x-3">
+                              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                <span className="text-blue-600 font-semibold">
+                                  {(user.user_metadata?.name || user.email).charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900">{user.user_metadata?.name || 'Nom non défini'}</p>
+                                <p className="text-sm text-gray-600">{user.email}</p>
+                                {user.user_metadata?.concession && (
+                                  <p className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block mt-1">
+                                    {user.user_metadata.concession}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex space-x-3">
+                            <button
+                              onClick={() => handleSelectUser(user)}
+                              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                              title="Modifier l'utilisateur"
+                            >
+                              ✏️ Modifier
+                            </button>
+                            <button
+                              onClick={async () => {
+                                setSelectedUser(user);
+                                const response = await fetch('/api/resetPasswordWithBrevo', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ email: user.email })
+                                });
+                                const result = await response.json();
+                                if (response.ok) {
+                                  alert(`✅ Email de réinitialisation envoyé à ${user.email}`);
+                                } else {
+                                  alert(`❌ ${result.error || 'Erreur lors de l\'envoi de l\'email'}`);
+                                  console.error('Détails:', result.details);
+                                }
+                              }}
+                              className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                              title="Réinitialiser le mot de passe"
+                            >
+                              🔑 Reset
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Mobile Layout */}
+                        <div className="sm:hidden p-4 space-y-4">
                           <div className="flex items-center space-x-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <span className="text-blue-600 font-semibold text-sm">
+                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                              <span className="text-blue-600 font-semibold">
                                 {(user.user_metadata?.name || user.email).charAt(0).toUpperCase()}
                               </span>
                             </div>
-                            <div>
-                              <p className="font-semibold text-gray-900">{user.user_metadata?.name || 'Nom non défini'}</p>
-                              <p className="text-sm text-gray-600">{user.email}</p>
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-900 truncate">{user.user_metadata?.name || 'Nom non défini'}</p>
+                              <p className="text-sm text-gray-600 truncate">{user.email}</p>
                               {user.user_metadata?.concession && (
                                 <p className="text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full inline-block mt-1">
                                   {user.user_metadata.concession}
@@ -690,36 +761,36 @@ export default function Admin() {
                               )}
                             </div>
                           </div>
-                        </div>
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() => handleSelectUser(user)}
-                            className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                            title="Modifier l'utilisateur"
-                          >
-                            ✏️ Modifier
-                          </button>
-                          <button
-                            onClick={async () => {
-                              setSelectedUser(user);
-                              const response = await fetch('/api/resetPasswordWithBrevo', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ email: user.email })
-                              });
-                              const result = await response.json();
-                              if (response.ok) {
-                                alert(`✅ Email de réinitialisation envoyé à ${user.email}`);
-                              } else {
-                                alert(`❌ ${result.error || 'Erreur lors de l\'envoi de l\'email'}`);
-                                console.error('Détails:', result.details);
-                              }
-                            }}
-                            className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
-                            title="Réinitialiser le mot de passe"
-                          >
-                            🔑 Reset
-                          </button>
+                          
+                          {/* Mobile Buttons - Full Width */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <button
+                              onClick={() => handleSelectUser(user)}
+                              className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                            >
+                              ✏️ Modifier
+                            </button>
+                            <button
+                              onClick={async () => {
+                                setSelectedUser(user);
+                                const response = await fetch('/api/resetPasswordWithBrevo', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ email: user.email })
+                                });
+                                const result = await response.json();
+                                if (response.ok) {
+                                  alert(`✅ Email de réinitialisation envoyé à ${user.email}`);
+                                } else {
+                                  alert(`❌ ${result.error || 'Erreur lors de l\'envoi de l\'email'}`);
+                                  console.error('Détails:', result.details);
+                                }
+                              }}
+                              className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500"
+                            >
+                              🔑 Reset
+                            </button>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -727,43 +798,75 @@ export default function Admin() {
 
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="mt-6 flex items-center justify-between">
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                        disabled={currentPage === 1}
-                        className={`px-4 py-2 rounded-md ${currentPage === 1
-                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                          : 'bg-blue-500 hover:bg-blue-600 text-white'
-                          }`}
-                      >
-                        ← Précédent
-                      </button>
+                    <div className="mt-6 space-y-4">
+                      {/* Desktop Pagination */}
+                      <div className="hidden sm:flex items-center justify-between">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                          disabled={currentPage === 1}
+                          className={`px-4 py-2 rounded-md transition-colors ${currentPage === 1
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : 'bg-blue-500 hover:bg-blue-600 text-white'
+                            }`}
+                        >
+                          ← Précédent
+                        </button>
 
-                      <div className="flex items-center space-x-2">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                          <button
-                            key={page}
-                            onClick={() => setCurrentPage(page)}
-                            className={`px-3 py-1 rounded-md ${currentPage === page
-                              ? 'bg-blue-600 text-white'
-                              : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
-                              }`}
-                          >
-                            {page}
-                          </button>
-                        ))}
+                        <div className="flex items-center space-x-2">
+                          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                            <button
+                              key={page}
+                              onClick={() => setCurrentPage(page)}
+                              className={`px-3 py-1 rounded-md transition-colors ${currentPage === page
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                                }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                        </div>
+
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                          disabled={currentPage === totalPages}
+                          className={`px-4 py-2 rounded-md transition-colors ${currentPage === totalPages
+                            ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                            : 'bg-blue-500 hover:bg-blue-600 text-white'
+                            }`}
+                        >
+                          Suivant →
+                        </button>
                       </div>
 
-                      <button
-                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                        disabled={currentPage === totalPages}
-                        className={`px-4 py-2 rounded-md ${currentPage === totalPages
-                          ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                          : 'bg-blue-500 hover:bg-blue-600 text-white'
-                          }`}
-                      >
-                        Suivant →
-                      </button>
+                      {/* Mobile Pagination */}
+                      <div className="sm:hidden space-y-3">
+                        <div className="text-center text-sm text-gray-600">
+                          Page {currentPage} sur {totalPages}
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                            className={`w-full py-3 rounded-lg font-medium transition-colors ${currentPage === 1
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-blue-500 hover:bg-blue-600 text-white'
+                              }`}
+                          >
+                            ← Précédent
+                          </button>
+                          <button
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                            className={`w-full py-3 rounded-lg font-medium transition-colors ${currentPage === totalPages
+                              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                              : 'bg-blue-500 hover:bg-blue-600 text-white'
+                              }`}
+                          >
+                            Suivant →
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   )}
                 </>
@@ -891,18 +994,18 @@ export default function Admin() {
                     return (
                       <div key={concession.id} className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-shadow">
                         {editingConcessionIndex === index ? (
-                          <div className="flex items-center space-x-4">
-                            <div className="flex-1">
-                              <input
-                                type="text"
-                                value={editingConcessionValue}
-                                onChange={(e) => setEditingConcessionValue(e.target.value)}
-                                className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                                onKeyPress={(e) => e.key === 'Enter' && handleUpdateConcession()}
-                                autoFocus
-                              />
-                            </div>
-                            <div className="flex space-x-2">
+                          <div className="space-y-4">
+                            <input
+                              type="text"
+                              value={editingConcessionValue}
+                              onChange={(e) => setEditingConcessionValue(e.target.value)}
+                              className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              onKeyPress={(e) => e.key === 'Enter' && handleUpdateConcession()}
+                              autoFocus
+                            />
+                            
+                            {/* Desktop Buttons */}
+                            <div className="hidden sm:flex space-x-3">
                               <button
                                 onClick={handleUpdateConcession}
                                 className="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
@@ -918,37 +1021,87 @@ export default function Admin() {
                                 ❌ Annuler
                               </button>
                             </div>
+
+                            {/* Mobile Buttons */}
+                            <div className="grid grid-cols-2 gap-3 sm:hidden">
+                              <button
+                                onClick={handleUpdateConcession}
+                                className="w-full py-3 bg-green-500 hover:bg-green-600 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
+                              >
+                                ✅ Sauvegarder
+                              </button>
+                              <button
+                                onClick={handleCancelEditConcession}
+                                className="w-full py-3 bg-gray-300 hover:bg-gray-400 text-gray-700 text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-400"
+                              >
+                                ❌ Annuler
+                              </button>
+                            </div>
                           </div>
                         ) : (
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-4">
-                              <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                                <span className="text-blue-600 font-semibold text-lg">🏢</span>
+                          <>
+                            {/* Desktop Layout */}
+                            <div className="hidden sm:flex items-center justify-between">
+                              <div className="flex items-center space-x-4">
+                                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <span className="text-blue-600 font-semibold text-lg">🏢</span>
+                                </div>
+                                <div>
+                                  <h4 className="text-lg font-semibold text-gray-900">{concession.name}</h4>
+                                  <p className="text-sm text-gray-600">
+                                    {userCount} utilisateur{userCount !== 1 ? 's' : ''} assigné{userCount !== 1 ? 's' : ''}
+                                  </p>
+                                </div>
                               </div>
-                              <div>
-                                <h4 className="text-lg font-semibold text-gray-900">{concession.name}</h4>
-                                <p className="text-sm text-gray-600">
-                                  {userCount} utilisateur{userCount !== 1 ? 's' : ''} assigné{userCount !== 1 ? 's' : ''}
-                                </p>
+                              <div className="flex space-x-3">
+                                <button
+                                  onClick={() => handleEditConcession(index, concession)}
+                                  className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                  title="Modifier"
+                                >
+                                  ✏️ Modifier
+                                </button>
+                                <button
+                                  onClick={() => confirmDeleteConcession(concession, index)}
+                                  className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                  title="Supprimer"
+                                >
+                                  🗑️ Supprimer
+                                </button>
                               </div>
                             </div>
-                            <div className="flex space-x-2">
-                              <button
-                                onClick={() => handleEditConcession(index, concession)}
-                                className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                                title="Modifier"
-                              >
-                                ✏️ Modifier
-                              </button>
-                              <button
-                                onClick={() => confirmDeleteConcession(concession, index)}
-                                className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                                title="Supprimer"
-                              >
-                                🗑️ Supprimer
-                              </button>
+
+                            {/* Mobile Layout */}
+                            <div className="sm:hidden space-y-4">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                                  <span className="text-blue-600 font-semibold text-lg">🏢</span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-lg font-semibold text-gray-900 truncate">{concession.name}</h4>
+                                  <p className="text-sm text-gray-600">
+                                    {userCount} utilisateur{userCount !== 1 ? 's' : ''} assigné{userCount !== 1 ? 's' : ''}
+                                  </p>
+                                </div>
+                              </div>
+                              
+                              {/* Mobile Buttons - Full Width */}
+                              <div className="grid grid-cols-2 gap-3">
+                                <button
+                                  onClick={() => handleEditConcession(index, concession)}
+                                  className="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                                >
+                                  ✏️ Modifier
+                                </button>
+                                <button
+                                  onClick={() => confirmDeleteConcession(concession, index)}
+                                  className="w-full py-3 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                                >
+                                  🗑️ Supprimer
+                                </button>
+                              </div>
                             </div>
-                          </div>
+                          </>
                         )}
                       </div>
                     );
@@ -1153,7 +1306,7 @@ export default function Admin() {
                 </div>
 
                 {/* Footer du modal */}
-                <div className="flex space-x-3 p-6 border-t bg-gray-50">
+                <div className="flex flex-col sm:flex-row gap-3 p-6 border-t bg-gray-50">
                   <button
                     onClick={handleDeleteConcession}
                     className="flex-1 bg-red-500 hover:bg-red-600 text-white font-medium py-3 px-4 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -1174,8 +1327,6 @@ export default function Admin() {
             </div>
           )}
       </div>
-  
-
     </Layout>
   );
 }

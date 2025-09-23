@@ -180,7 +180,7 @@ async function handler(req, res) {
             model: 'gemini-2.0-flash',
             contents: { parts: [imagePart, textPart] },
             config: {
-              systemInstruction: 'Vous êtes un OCR automobile ultra-spécialisé pour extraire plaques d'immatriculation et VIN.'
+              systemInstruction: 'Vous êtes un OCR automobile ultra-spécialisé pour extraire plaques d\'immatriculation et VIN.'
             }
           });
           const ocrDuration = Date.now() - ocrStartTime;

@@ -1372,7 +1372,6 @@ export default function Admin() {
                 <h2 className="text-2xl font-semibold text-gray-900">Monitoring Système</h2>
                 <p className="text-gray-600 mt-1">Surveillance de la santé et des performances de l'application</p>
               </div>
-              
               <SystemMonitor isVisible={activeTab === 'monitoring'} />
             </div>
           )}

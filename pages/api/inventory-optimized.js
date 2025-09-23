@@ -270,7 +270,7 @@ async function handler(req, res) {
                 model: 'gemini-2.0-flash',
                 contents: { parts: [imagePart, textPart] },
                 config: {
-                  systemInstruction: 'Vous êtes un OCR automobile ultra-spécialisé pour extraire plaques d'immatriculation et VIN.',
+                  systemInstruction: 'Vous êtes un OCR automobile ultra-spécialisé pour extraire plaques d\'immatriculation et VIN.',
                   maxOutputTokens: 50,
                   temperature: 0.1
                 }

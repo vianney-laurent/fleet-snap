@@ -527,7 +527,7 @@ export default function Admin() {
                   ➕ Informations du nouvel utilisateur
                 </h3>
 
-                <div className="space-y-6"></div>
+                <div className="space-y-6">
                 {/* Email */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -676,6 +676,7 @@ export default function Admin() {
                     <li>• La concession peut être modifiée ultérieurement</li>
                     <li>• L'utilisateur pourra se connecter immédiatement après création</li>
                   </ul>
+                </div>
                 </div>
               </div>
             </div>

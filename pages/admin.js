@@ -1,5 +1,9 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
+import SystemMonitor from '../components/SystemMonitor';
+import { ConnectivityIndicator } from '../components/ConnectivityIndicator';
+import { useErrorHandler } from '../lib/errorHandler';
+import { usePerformanceCleanup } from '../lib/performanceOptimizer';
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'supersecret';
 
@@ -36,6 +40,7 @@ export default function Admin() {
 
   // États pour la pagination et recherche
   const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage] = useState(10);
 
@@ -53,6 +58,11 @@ export default function Admin() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [showPasswordStrength, setShowPasswordStrength] = useState(false);
+  const [showSystemMonitor, setShowSystemMonitor] = useState(false);
+
+  // Hooks pour la gestion d'erreurs et performance
+  const { handleError } = useErrorHandler();
+  usePerformanceCleanup();
 
   const fetchConcessions = async () => {
     try {
@@ -77,6 +87,15 @@ export default function Admin() {
     }
   }, [accessGranted, activeTab]);
 
+  // Debouncing pour la recherche (évite les requêtes excessives)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchTerm(searchTerm);
+    }, 300); // Attendre 300ms après la dernière frappe
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
   // Attendre le montage du composant pour éviter les erreurs d'hydratation
   if (!mounted) return <div className="p-6 text-center">Chargement...</div>;
 
@@ -90,6 +109,11 @@ export default function Admin() {
   };
 
   const fetchUsers = async () => {
+    // Protection contre les appels multiples simultanés
+    if (loadingUsers) {
+      return;
+    }
+    
     setLoadingUsers(true);
     try {
       const response = await fetch('/api/adminUsers');
@@ -111,12 +135,14 @@ export default function Admin() {
     }
   };
 
-  // Filtrer les utilisateurs selon le terme de recherche
+  // Filtrer les utilisateurs selon le terme de recherche (avec debouncing)
   const filteredUsers = users.filter(user => {
+    if (!debouncedSearchTerm) return true; // Pas de filtre si pas de recherche
+    
     const name = user.user_metadata?.name?.toLowerCase() || '';
     const email = user.email.toLowerCase();
     const concession = user.user_metadata?.concession?.toLowerCase() || '';
-    const search = searchTerm.toLowerCase();
+    const search = debouncedSearchTerm.toLowerCase();
 
     return name.includes(search) || email.includes(search) || concession.includes(search);
   });
@@ -132,6 +158,11 @@ export default function Admin() {
     setSearchTerm(value);
     setCurrentPage(1);
   };
+
+  // Reset de la page quand le terme de recherche débounced change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearchTerm]);
 
   // Calculer les statistiques d'utilisation des concessions
   const getConcessionStats = () => {
@@ -225,7 +256,8 @@ export default function Admin() {
         setCreateErrorMessage(result.error || 'Erreur inconnue lors de la création');
       }
     } catch (error) {
-      setCreateErrorMessage('Erreur de connexion. Veuillez réessayer.');
+      const classified = handleError(error, { action: 'createUser', email: createEmail });
+      setCreateErrorMessage(classified.userMessage || 'Erreur de connexion. Veuillez réessayer.');
     } finally {
       setIsCreatingUser(false);
     }
@@ -417,12 +449,15 @@ export default function Admin() {
   return (
     <Layout>
       <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
-        <h1 className="text-2xl font-semibold">Administration</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-semibold">Administration</h1>
+          <ConnectivityIndicator showDetails={false} />
+        </div>
 
         {/* Navigation responsive */}
         <div className="border-b border-gray-200">
           <nav className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-            {['createUser', 'editUser', 'settings'].map(tab => (
+            {['createUser', 'editUser', 'settings', 'monitoring'].map(tab => (
               <button
                 key={tab}
                 className={`py-3 px-4 rounded-lg sm:rounded-none text-sm font-medium transition-colors ${
@@ -441,12 +476,15 @@ export default function Admin() {
                     setSearchTerm('');
                     setCurrentPage(1);
                     setSelectedUser(null);
+                  } else if (tab === 'monitoring') {
+                    setShowSystemMonitor(true);
                   }
                 }}
               >
                 {tab === 'createUser' ? '👤 Créer un utilisateur' :
                   tab === 'editUser' ? '🛠 Modifier un utilisateur' :
-                    '⚙️ Réglages'}
+                  tab === 'settings' ? '⚙️ Réglages' :
+                    '📊 Monitoring'}
               </button>
             ))}
           </nav>
@@ -1326,6 +1364,18 @@ export default function Admin() {
               </div>
             </div>
           )}
+
+          {activeTab === 'monitoring' && (
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-semibold text-gray-900">Monitoring Système</h2>
+                <p className="text-gray-600 mt-1">Surveillance de la santé et des performances de l'application</p>
+              </div>
+              
+              <SystemMonitor isVisible={activeTab === 'monitoring'} />
+            </div>
+          )}
+        </div>
       </div>
     </Layout>
   );

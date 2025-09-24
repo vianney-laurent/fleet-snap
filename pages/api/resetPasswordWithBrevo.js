@@ -72,7 +72,7 @@ export default async function handler(req, res) {
 
     try {
         console.log('Génération du lien de reset pour:', email);
-
+        
         // Générer un lien de reset avec l'Admin API
         const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
             type: 'recovery',
@@ -84,21 +84,21 @@ export default async function handler(req, res) {
 
         if (linkError) {
             console.error('Erreur génération lien:', linkError);
-            return res.status(500).json({
+            return res.status(500).json({ 
                 error: 'Impossible de générer le lien de réinitialisation',
-                details: linkError.message
+                details: linkError.message 
             });
         }
 
         const resetLink = linkData.properties?.action_link;
         if (!resetLink) {
-            return res.status(500).json({
-                error: 'Lien de réinitialisation non généré'
+            return res.status(500).json({ 
+                error: 'Lien de réinitialisation non généré' 
             });
         }
 
         console.log('Lien généré, envoi de l\'email via Brevo...');
-
+        
         // Envoyer l'email via Brevo
         await sendEmailWithBrevo(email, resetLink);
 
@@ -110,9 +110,9 @@ export default async function handler(req, res) {
 
     } catch (err) {
         console.error('Erreur inattendue:', err);
-        return res.status(500).json({
+        return res.status(500).json({ 
             error: 'Erreur lors de l\'envoi de l\'email',
-            details: err.message
+            details: err.message 
         });
     }
 }

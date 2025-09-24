@@ -1,9 +1,5 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
-import SystemMonitor from '../components/SystemMonitor';
-import ConnectivityIndicator from '../components/ConnectivityIndicator';
-import { useErrorHandler } from '../lib/errorHandler';
-import { usePerformanceCleanup } from '../lib/performanceOptimizer';
 
 const ADMIN_PASSWORD = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || 'supersecret';
 
@@ -40,7 +36,6 @@ export default function Admin() {
 
   // États pour la pagination et recherche
   const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [usersPerPage] = useState(10);
 
@@ -58,11 +53,6 @@ export default function Admin() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [isCreatingUser, setIsCreatingUser] = useState(false);
   const [showPasswordStrength, setShowPasswordStrength] = useState(false);
-  const [showSystemMonitor, setShowSystemMonitor] = useState(false);
-
-  // Hooks pour la gestion d'erreurs et performance
-  const { handleError } = useErrorHandler();
-  usePerformanceCleanup();
 
   const fetchConcessions = async () => {
     try {
@@ -87,20 +77,6 @@ export default function Admin() {
     }
   }, [accessGranted, activeTab]);
 
-  // Debouncing pour la recherche (évite les requêtes excessives)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-    }, 300); // Attendre 300ms après la dernière frappe
-
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Reset de la page quand le terme de recherche débounced change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [debouncedSearchTerm]);
-
   // Attendre le montage du composant pour éviter les erreurs d'hydratation
   if (!mounted) return <div className="p-6 text-center">Chargement...</div>;
 
@@ -114,11 +90,6 @@ export default function Admin() {
   };
 
   const fetchUsers = async () => {
-    // Protection contre les appels multiples simultanés
-    if (loadingUsers) {
-      return;
-    }
-
     setLoadingUsers(true);
     try {
       const response = await fetch('/api/adminUsers');
@@ -140,14 +111,12 @@ export default function Admin() {
     }
   };
 
-  // Filtrer les utilisateurs selon le terme de recherche (avec debouncing)
+  // Filtrer les utilisateurs selon le terme de recherche
   const filteredUsers = users.filter(user => {
-    if (!debouncedSearchTerm) return true; // Pas de filtre si pas de recherche
-
     const name = user.user_metadata?.name?.toLowerCase() || '';
     const email = user.email.toLowerCase();
     const concession = user.user_metadata?.concession?.toLowerCase() || '';
-    const search = debouncedSearchTerm.toLowerCase();
+    const search = searchTerm.toLowerCase();
 
     return name.includes(search) || email.includes(search) || concession.includes(search);
   });
@@ -256,8 +225,7 @@ export default function Admin() {
         setCreateErrorMessage(result.error || 'Erreur inconnue lors de la création');
       }
     } catch (error) {
-      const classified = handleError(error, { action: 'createUser', email: createEmail });
-      setCreateErrorMessage(classified.userMessage || 'Erreur de connexion. Veuillez réessayer.');
+      setCreateErrorMessage('Erreur de connexion. Veuillez réessayer.');
     } finally {
       setIsCreatingUser(false);
     }
@@ -449,21 +417,19 @@ export default function Admin() {
   return (
     <Layout>
       <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold">Administration</h1>
-          <ConnectivityIndicator showDetails={false} />
-        </div>
+        <h1 className="text-2xl font-semibold">Administration</h1>
 
         {/* Navigation responsive */}
         <div className="border-b border-gray-200">
           <nav className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
-            {['createUser', 'editUser', 'settings', 'monitoring'].map(tab => (
+            {['createUser', 'editUser', 'settings'].map(tab => (
               <button
                 key={tab}
-                className={`py-3 px-4 rounded-lg sm:rounded-none text-sm font-medium transition-colors ${activeTab === tab
-                  ? 'bg-blue-100 text-blue-600 sm:bg-transparent sm:border-b-2 sm:border-blue-600'
-                  : 'text-gray-600 hover:bg-gray-50 sm:hover:bg-transparent'
-                  }`}
+                className={`py-3 px-4 rounded-lg sm:rounded-none text-sm font-medium transition-colors ${
+                  activeTab === tab 
+                    ? 'bg-blue-100 text-blue-600 sm:bg-transparent sm:border-b-2 sm:border-blue-600' 
+                    : 'text-gray-600 hover:bg-gray-50 sm:hover:bg-transparent'
+                }`}
                 onClick={() => {
                   setActiveTab(tab);
                   if (tab === 'createUser') {
@@ -475,15 +441,12 @@ export default function Admin() {
                     setSearchTerm('');
                     setCurrentPage(1);
                     setSelectedUser(null);
-                  } else if (tab === 'monitoring') {
-                    setShowSystemMonitor(true);
                   }
                 }}
               >
                 {tab === 'createUser' ? '👤 Créer un utilisateur' :
                   tab === 'editUser' ? '🛠 Modifier un utilisateur' :
-                    tab === 'settings' ? '⚙️ Réglages' :
-                      '📊 Monitoring'}
+                    '⚙️ Réglages'}
               </button>
             ))}
           </nav>
@@ -526,156 +489,155 @@ export default function Admin() {
                   ➕ Informations du nouvel utilisateur
                 </h3>
 
-                <div className="space-y-6">
-                  {/* Email */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      📧 Adresse email *
-                    </label>
-                    <input
-                      type="email"
-                      value={createEmail}
-                      onChange={(e) => setCreateEmail(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      placeholder="exemple@entreprise.com"
-                    />
-                    {createEmail && !createEmail.includes('@') && (
-                      <p className="text-red-500 text-sm mt-1">⚠️ Format d'email invalide</p>
-                    )}
-                  </div>
-                  {/* Nom complet */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      👤 Nom complet *
-                    </label>
-                    <input
-                      type="text"
-                      value={createFullName}
-                      onChange={(e) => setCreateFullName(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                      placeholder="Prénom Nom"
-                    />
-                  </div>
-                  {/* Mot de passe */}
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-sm font-medium text-gray-700">
-                        🔐 Mot de passe *
-                      </label>
-                      <button
-                        type="button"
-                        onClick={generateSecurePassword}
-                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
-                      >
-                        🎲 Générer un mot de passe
-                      </button>
-                    </div>
-                    <div className="relative">
-                      <input
-                        type={showPasswordStrength ? "text" : "password"}
-                        value={createPassword}
-                        onChange={(e) => setCreatePassword(e.target.value)}
-                        className="w-full border border-gray-300 rounded-lg p-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                        placeholder="Mot de passe sécurisé"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPasswordStrength(!showPasswordStrength)}
-                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPasswordStrength ? '🙈' : '👁️'}
-                      </button>
-                    </div>
-
-                    {/* Indicateur de force du mot de passe */}
-                    {createPassword && (
-                      <div className="mt-2">
-                        <div className="flex items-center space-x-2">
-                          <div className="flex-1 bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrength(createPassword).color}`}
-                              style={{ width: `${(getPasswordStrength(createPassword).score / 5) * 100}%` }}
-                            ></div>
-                          </div>
-                          <span className="text-sm font-medium text-gray-600">
-                            {getPasswordStrength(createPassword).label}
-                          </span>
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          Recommandations : 8+ caractères, majuscules, minuscules, chiffres, symboles
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                  {/* Concession */}
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      🏢 Concession *
-                    </label>
-                    <select
-                      value={createConcession}
-                      onChange={(e) => setCreateConcession(e.target.value)}
-                      className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-                    >
-                      <option value="">Sélectionnez une concession</option>
-                      {concessionList.map(c => (
-                        <option key={c.id} value={c.name}>
-                          {c.name} ({getConcessionStats()[c.name] || 0} utilisateur{(getConcessionStats()[c.name] || 0) !== 1 ? 's' : ''})
-                        </option>
-                      ))}
-                    </select>
-                    {concessionList.length === 0 && (
-                      <p className="text-orange-500 text-sm mt-1">
-                        ⚠️ Aucune concession disponible. Créez-en une dans l'onglet Réglages.
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Messages d'erreur/succès */}
-                  {createSuccessMessage && (
-                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center space-x-2">
-                      <span>{createSuccessMessage}</span>
-                    </div>
+                <div className="space-y-6"></div>
+                {/* Email */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📧 Adresse email *
+                  </label>
+                  <input
+                    type="email"
+                    value={createEmail}
+                    onChange={(e) => setCreateEmail(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    placeholder="exemple@entreprise.com"
+                  />
+                  {createEmail && !createEmail.includes('@') && (
+                    <p className="text-red-500 text-sm mt-1">⚠️ Format d'email invalide</p>
                   )}
-                  {createErrorMessage && (
-                    <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center space-x-2">
-                      <span>{createErrorMessage}</span>
-                    </div>
-                  )}
-
-                  {/* Bouton de création */}
-                  <div className="pt-4">
+                </div>
+                {/* Nom complet */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    👤 Nom complet *
+                  </label>
+                  <input
+                    type="text"
+                    value={createFullName}
+                    onChange={(e) => setCreateFullName(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                    placeholder="Prénom Nom"
+                  />
+                </div>
+                {/* Mot de passe */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-medium text-gray-700">
+                      🔐 Mot de passe *
+                    </label>
                     <button
-                      onClick={handleCreateUser}
-                      disabled={!isFormValid() || isCreatingUser}
-                      className={`w-full font-medium py-4 px-6 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${isFormValid() && !isCreatingUser
-                        ? 'bg-green-500 hover:bg-green-600 text-white focus:ring-green-500 transform hover:scale-[1.02]'
-                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
+                      type="button"
+                      onClick={generateSecurePassword}
+                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
                     >
-                      {isCreatingUser ? (
-                        <div className="flex items-center justify-center space-x-2">
-                          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                          <span>Création en cours...</span>
-                        </div>
-                      ) : (
-                        <div className="flex items-center justify-center space-x-2">
-                          <span>👤</span>
-                          <span>Créer l'utilisateur</span>
-                        </div>
-                      )}
+                      🎲 Générer un mot de passe
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input
+                      type={showPasswordStrength ? "text" : "password"}
+                      value={createPassword}
+                      onChange={(e) => setCreatePassword(e.target.value)}
+                      className="w-full border border-gray-300 rounded-lg p-3 pr-12 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                      placeholder="Mot de passe sécurisé"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPasswordStrength(!showPasswordStrength)}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPasswordStrength ? '🙈' : '👁️'}
                     </button>
                   </div>
 
-                  {/* Aide contextuelle */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="font-medium text-blue-900 mb-2">💡 Conseils</h4>
-                    <ul className="text-sm text-blue-800 space-y-1">
-                      <li>• Un mot de passe fort est recommandé pour la sécurité</li>
-                      <li>• La concession peut être modifiée ultérieurement</li>
-                      <li>• L'utilisateur pourra se connecter immédiatement après création</li>
-                    </ul>
+                  {/* Indicateur de force du mot de passe */}
+                  {createPassword && (
+                    <div className="mt-2">
+                      <div className="flex items-center space-x-2">
+                        <div className="flex-1 bg-gray-200 rounded-full h-2">
+                          <div
+                            className={`h-2 rounded-full transition-all duration-300 ${getPasswordStrength(createPassword).color}`}
+                            style={{ width: `${(getPasswordStrength(createPassword).score / 5) * 100}%` }}
+                          ></div>
+                        </div>
+                        <span className="text-sm font-medium text-gray-600">
+                          {getPasswordStrength(createPassword).label}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Recommandations : 8+ caractères, majuscules, minuscules, chiffres, symboles
+                      </div>
+                    </div>
+                  )}
+                </div>
+                {/* Concession */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    🏢 Concession *
+                  </label>
+                  <select
+                    value={createConcession}
+                    onChange={(e) => setCreateConcession(e.target.value)}
+                    className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+                  >
+                    <option value="">Sélectionnez une concession</option>
+                    {concessionList.map(c => (
+                      <option key={c.id} value={c.name}>
+                        {c.name} ({getConcessionStats()[c.name] || 0} utilisateur{(getConcessionStats()[c.name] || 0) !== 1 ? 's' : ''})
+                      </option>
+                    ))}
+                  </select>
+                  {concessionList.length === 0 && (
+                    <p className="text-orange-500 text-sm mt-1">
+                      ⚠️ Aucune concession disponible. Créez-en une dans l'onglet Réglages.
+                    </p>
+                  )}
+                </div>
+                
+                {/* Messages d'erreur/succès */}
+                {createSuccessMessage && (
+                  <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg flex items-center space-x-2">
+                    <span>{createSuccessMessage}</span>
                   </div>
+                )}
+                {createErrorMessage && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center space-x-2">
+                    <span>{createErrorMessage}</span>
+                  </div>
+                )}
+
+                {/* Bouton de création */}
+                <div className="pt-4">
+                  <button
+                    onClick={handleCreateUser}
+                    disabled={!isFormValid() || isCreatingUser}
+                    className={`w-full font-medium py-4 px-6 rounded-lg transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${isFormValid() && !isCreatingUser
+                      ? 'bg-green-500 hover:bg-green-600 text-white focus:ring-green-500 transform hover:scale-[1.02]'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                  >
+                    {isCreatingUser ? (
+                      <div className="flex items-center justify-center space-x-2">
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <span>Création en cours...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center space-x-2">
+                        <span>👤</span>
+                        <span>Créer l'utilisateur</span>
+                      </div>
+                    )}
+                  </button>
+                </div>
+
+                {/* Aide contextuelle */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h4 className="font-medium text-blue-900 mb-2">💡 Conseils</h4>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• Un mot de passe fort est recommandé pour la sécurité</li>
+                    <li>• La concession peut être modifiée ultérieurement</li>
+                    <li>• L'utilisateur pourra se connecter immédiatement après création</li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -799,7 +761,7 @@ export default function Admin() {
                               )}
                             </div>
                           </div>
-
+                          
                           {/* Mobile Buttons - Full Width */}
                           <div className="grid grid-cols-2 gap-3">
                             <button
@@ -1041,7 +1003,7 @@ export default function Admin() {
                               onKeyPress={(e) => e.key === 'Enter' && handleUpdateConcession()}
                               autoFocus
                             />
-
+                            
                             {/* Desktop Buttons */}
                             <div className="hidden sm:flex space-x-3">
                               <button
@@ -1122,7 +1084,7 @@ export default function Admin() {
                                   </p>
                                 </div>
                               </div>
-
+                              
                               {/* Mobile Buttons - Full Width */}
                               <div className="grid grid-cols-2 gap-3">
                                 <button
@@ -1364,17 +1326,6 @@ export default function Admin() {
               </div>
             </div>
           )}
-
-        {activeTab === 'monitoring' && (
-          <div className="space-y-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-gray-900">Monitoring Système</h2>
-              <p className="text-gray-600 mt-1">Surveillance de la santé et des performances de l'application</p>
-            </div>
-
-            <SystemMonitor isVisible={activeTab === 'monitoring'} />
-          </div>
-        )}
       </div>
     </Layout>
   );

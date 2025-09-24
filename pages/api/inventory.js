@@ -30,13 +30,17 @@ async function handler(req, res) {
   let user_id = 'unknown';
   let fields = {};
   let fileCount = 0;
-  
+
   try {
     logger.info('Début traitement inventaire');
 
     // 1. Parser le form-data (zones, comment, photos[])
     const { fields, files } = await new Promise((resolve, reject) => {
-      const form = formidable({ multiples: true });
+      const form = formidable({
+        multiples: true,
+        maxFileSize: 10 * 1024 * 1024, // 10MB par fichier
+        maxTotalFileSize: 50 * 1024 * 1024 // 50MB total pour tous les fichiers
+      });
       form.parse(req, (err, fields, files) => {
         if (err) reject(err);
         else resolve({ fields, files });
@@ -52,7 +56,7 @@ async function handler(req, res) {
       logger.warn('Tentative accès inventaire sans token');
       return res.status(401).json({ error: 'Non authentifié' });
     }
-    
+
     const token = authHeader.split(' ')[1];
     const { data: { user }, error: userError } = await supabase.auth.getUser(token);
     if (userError || !user) {
@@ -63,11 +67,11 @@ async function handler(req, res) {
     user_id = user.id;
     const { email, user_metadata } = user;
     const concession = user_metadata.concession || '';
-    
-    logger.info('Utilisateur authentifié pour inventaire', { 
-      userId: user_id, 
-      email, 
-      concession 
+
+    logger.info('Utilisateur authentifié pour inventaire', {
+      userId: user_id,
+      email,
+      concession
     });
 
     // 3. Préparer et traiter chaque photo
@@ -86,10 +90,10 @@ async function handler(req, res) {
         .from(STORAGE_BUCKET)
         .upload(filePath, buffer, { contentType: file.mimetype });
       if (uploadError) {
-        logger.error('Erreur upload Supabase Storage', uploadError, { 
-          userId: user_id, 
-          filePath, 
-          fileSize: buffer.length 
+        logger.error('Erreur upload Supabase Storage', uploadError, {
+          userId: user_id,
+          filePath,
+          fileSize: buffer.length
         });
         throw uploadError;
       }
@@ -102,12 +106,12 @@ async function handler(req, res) {
         logger.error('Erreur URL publique Supabase', publicUrlError, { userId: user_id, filePath });
         throw publicUrlError;
       }
-      
-      logger.info('Image uploadée avec succès', { 
-        userId: user_id, 
-        filePath, 
+
+      logger.info('Image uploadée avec succès', {
+        userId: user_id,
+        filePath,
         fileSize: buffer.length,
-        publicUrl: publicUrl.substring(0, 50) + '...' 
+        publicUrl: publicUrl.substring(0, 50) + '...'
       });
 
       // 3.d. OCR via Gemini Flash multimodal (image + text)
@@ -127,7 +131,7 @@ async function handler(req, res) {
       });
       const ocrDuration = Date.now() - ocrStartTime;
       const identifiant = ocrResponse.text.trim() || 'NO_DETECTION';
-      
+
       logger.inventory.ocrResult(user_id, identifiant, null, {
         duration: ocrDuration,
         fileSize: buffer.length,
@@ -158,9 +162,9 @@ async function handler(req, res) {
       .from('inventaire')
       .insert(records);
     if (insertError) {
-      logger.error('Erreur insertion inventaire Supabase', insertError, { 
-        userId: user_id, 
-        recordCount: records.length 
+      logger.error('Erreur insertion inventaire Supabase', insertError, {
+        userId: user_id,
+        recordCount: records.length
       });
       throw insertError;
     }

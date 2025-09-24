@@ -22,6 +22,74 @@ export default function Inventory() {
   const [newZone, setNewZone] = useState('');
   const router = useRouter();
 
+  // Fonction de compression d'image simple et safe
+  const compressImage = (file, maxSizeMB = 2, quality = 0.8) => {
+    return new Promise((resolve) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      
+      img.onload = () => {
+        // Calculer les nouvelles dimensions en gardant le ratio
+        const maxWidth = 1920;
+        const maxHeight = 1080;
+        let { width, height } = img;
+        
+        if (width > maxWidth || height > maxHeight) {
+          const ratio = Math.min(maxWidth / width, maxHeight / height);
+          width *= ratio;
+          height *= ratio;
+        }
+        
+        canvas.width = width;
+        canvas.height = height;
+        
+        // Dessiner l'image redimensionnée
+        ctx.drawImage(img, 0, 0, width, height);
+        
+        // Convertir en blob avec compression
+        canvas.toBlob(resolve, file.type, quality);
+      };
+      
+      img.src = URL.createObjectURL(file);
+    });
+  };
+
+  // Gestion de la sélection de photo avec compression automatique
+  const handlePhotoChange = async (e) => {
+    const selectedFile = e.target.files[0];
+    if (!selectedFile) return;
+    
+    const fileSizeMB = selectedFile.size / (1024 * 1024);
+    
+    // Si le fichier fait plus de 2MB, on le compresse
+    if (fileSizeMB > 2) {
+      logger.info('Compression image nécessaire', { 
+        userId: user?.id,
+        originalSize: fileSizeMB.toFixed(2) + 'MB',
+        fileName: selectedFile.name
+      });
+      
+      const compressedBlob = await compressImage(selectedFile);
+      const compressedFile = new File([compressedBlob], selectedFile.name, {
+        type: selectedFile.type,
+        lastModified: Date.now()
+      });
+      
+      const newSizeMB = compressedFile.size / (1024 * 1024);
+      logger.info('Image compressée', { 
+        userId: user?.id,
+        originalSize: fileSizeMB.toFixed(2) + 'MB',
+        newSize: newSizeMB.toFixed(2) + 'MB',
+        fileName: selectedFile.name
+      });
+      
+      setPhoto(compressedFile);
+    } else {
+      setPhoto(selectedFile);
+    }
+  };
+
   // Récupère l'utilisateur + la concession
   useEffect(() => {
     async function fetchUser() {
@@ -286,7 +354,7 @@ export default function Inventory() {
               accept="image/*"
               className="hidden"
               id="photoInput"
-              onChange={e => setPhoto(e.target.files[0])}
+              onChange={handlePhotoChange}
             />
             <label htmlFor="photoInput" className="flex flex-col items-center cursor-pointer">
               <span className="text-5xl mb-2">📸</span>

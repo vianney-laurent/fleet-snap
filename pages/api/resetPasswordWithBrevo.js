@@ -76,10 +76,7 @@ export default async function handler(req, res) {
         // Générer un lien de reset avec l'Admin API
         const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
             type: 'recovery',
-            email: email,
-            options: {
-                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`
-            }
+            email: email
         });
 
         if (linkError) {
@@ -90,12 +87,30 @@ export default async function handler(req, res) {
             });
         }
 
-        const resetLink = linkData.properties?.action_link;
-        if (!resetLink) {
+        const originalLink = linkData.properties?.action_link;
+        if (!originalLink) {
             return res.status(500).json({ 
                 error: 'Lien de réinitialisation non généré' 
             });
         }
+
+        // Extraire les paramètres du lien Supabase et construire notre propre URL
+        const url = new URL(originalLink);
+        const accessToken = url.searchParams.get('access_token');
+        const refreshToken = url.searchParams.get('refresh_token');
+        const type = url.searchParams.get('type');
+
+        if (!accessToken || !refreshToken) {
+            return res.status(500).json({ 
+                error: 'Tokens manquants dans le lien généré' 
+            });
+        }
+
+        // Construire le lien de reset avec notre domaine et nos paramètres
+        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+        const resetLink = `${baseUrl}/reset-password?access_token=${accessToken}&refresh_token=${refreshToken}&type=${type}`;
+        
+        console.log('Lien de reset construit:', resetLink.substring(0, 100) + '...');
 
         console.log('Lien généré, envoi de l\'email via Brevo...');
         

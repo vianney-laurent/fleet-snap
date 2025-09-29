@@ -87,12 +87,19 @@ export default async function handler(req, res) {
             });
         }
 
+        // Debug: afficher la structure complète de la réponse
+        console.log('Structure linkData complète:', JSON.stringify(linkData, null, 2));
+
         const originalLink = linkData.properties?.action_link;
         if (!originalLink) {
+            console.error('Pas de action_link trouvé dans:', linkData);
             return res.status(500).json({ 
-                error: 'Lien de réinitialisation non généré' 
+                error: 'Lien de réinitialisation non généré',
+                debug: linkData
             });
         }
+
+        console.log('Lien original Supabase:', originalLink);
 
         // Extraire les paramètres du lien Supabase et construire notre propre URL
         const url = new URL(originalLink);
@@ -100,9 +107,31 @@ export default async function handler(req, res) {
         const refreshToken = url.searchParams.get('refresh_token');
         const type = url.searchParams.get('type');
 
+        console.log('Tokens extraits:', {
+            accessToken: accessToken ? 'présent' : 'manquant',
+            refreshToken: refreshToken ? 'présent' : 'manquant',
+            type: type || 'manquant'
+        });
+
         if (!accessToken || !refreshToken) {
-            return res.status(500).json({ 
-                error: 'Tokens manquants dans le lien généré' 
+            // Essayer une approche alternative : utiliser directement le lien Supabase
+            console.log('Tokens manquants, utilisation du lien Supabase direct');
+            const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+            
+            // Modifier l'URL pour pointer vers notre page de reset
+            const modifiedUrl = new URL(originalLink);
+            modifiedUrl.hostname = new URL(baseUrl).hostname;
+            modifiedUrl.pathname = '/reset-password';
+            
+            const resetLink = modifiedUrl.toString();
+            console.log('Lien modifié:', resetLink);
+            
+            // Envoyer l'email avec le lien modifié
+            await sendEmailWithBrevo(email, resetLink);
+            
+            return res.status(200).json({
+                message: 'Email de réinitialisation envoyé avec succès',
+                method: 'brevo-direct'
             });
         }
 
@@ -120,7 +149,7 @@ export default async function handler(req, res) {
         console.log('Email de reset envoyé avec succès via Brevo pour:', email);
         return res.status(200).json({
             message: 'Email de réinitialisation envoyé avec succès',
-            method: 'brevo'
+            method: 'brevo-custom'
         });
 
     } catch (err) {

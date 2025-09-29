@@ -19,11 +19,22 @@ export default function ResetPassword() {
     useEffect(() => {
         const checkSession = async () => {
             try {
-                // Vérifier si on a des paramètres de reset dans l'URL
-                const { access_token, refresh_token, type } = router.query;
+                console.log('Paramètres URL reçus:', router.query);
                 
+                // Vérifier si on a des paramètres de reset dans l'URL
+                const { access_token, refresh_token, type, token, error: urlError } = router.query;
+                
+                // Gérer les erreurs dans l'URL
+                if (urlError) {
+                    console.error('Erreur dans URL:', urlError);
+                    setError('Erreur dans le lien de réinitialisation.');
+                    setLoading(false);
+                    return;
+                }
+                
+                // Essayer avec access_token et refresh_token (format standard)
                 if (access_token && refresh_token && type === 'recovery') {
-                    // Définir la session avec les tokens de l'URL
+                    console.log('Tentative avec access_token/refresh_token');
                     const { error } = await supabase.auth.setSession({
                         access_token,
                         refresh_token
@@ -36,13 +47,30 @@ export default function ResetPassword() {
                         return;
                     }
                     
+                    console.log('Session définie avec succès');
                     setValidSession(true);
-                } else {
-                    // Vérifier si on a déjà une session active
+                } 
+                // Essayer avec token simple (format alternatif)
+                else if (token) {
+                    console.log('Tentative avec token simple');
+                    // Pour un token simple, on essaie de vérifier directement la session
                     const { data: { session } } = await supabase.auth.getSession();
                     if (session) {
+                        console.log('Session existante trouvée');
                         setValidSession(true);
                     } else {
+                        setError('Token de réinitialisation invalide.');
+                    }
+                }
+                // Vérifier si on a déjà une session active (cas où l'utilisateur revient)
+                else {
+                    console.log('Vérification session existante');
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session) {
+                        console.log('Session active trouvée');
+                        setValidSession(true);
+                    } else {
+                        console.log('Aucune session trouvée');
                         setError('Lien de réinitialisation invalide. Veuillez demander un nouveau lien.');
                     }
                 }

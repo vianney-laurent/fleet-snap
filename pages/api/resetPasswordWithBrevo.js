@@ -73,83 +73,84 @@ export default async function handler(req, res) {
     try {
         console.log('Génération du lien de reset pour:', email);
         
-        // Générer un lien de reset avec l'Admin API
+        // Approche simplifiée : utiliser resetPasswordForEmail avec redirectTo
+        console.log('Tentative avec resetPasswordForEmail...');
+        
+        const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`
+        });
+
+        if (error) {
+            console.error('Erreur resetPasswordForEmail:', error);
+            
+            // Fallback : générer un lien manuel
+            console.log('Fallback vers generateLink...');
+            const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
+                type: 'recovery',
+                email: email,
+                options: {
+                    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`
+                }
+            });
+
+            if (linkError) {
+                console.error('Erreur génération lien:', linkError);
+                return res.status(500).json({ 
+                    error: 'Impossible de générer le lien de réinitialisation',
+                    details: linkError.message 
+                });
+            }
+
+            const resetLink = linkData.properties?.action_link;
+            if (!resetLink) {
+                return res.status(500).json({ 
+                    error: 'Lien de réinitialisation non généré' 
+                });
+            }
+
+            console.log('Lien généré via fallback, envoi email...');
+            await sendEmailWithBrevo(email, resetLink);
+            
+            return res.status(200).json({
+                message: 'Email de réinitialisation envoyé avec succès',
+                method: 'brevo-fallback'
+            });
+        }
+
+        console.log('resetPasswordForEmail réussi, mais on doit envoyer manuellement l\'email...');
+        
+        // Si resetPasswordForEmail fonctionne mais n'envoie pas d'email, 
+        // on génère quand même un lien pour l'envoyer via Brevo
         const { data: linkData, error: linkError } = await supabase.auth.admin.generateLink({
             type: 'recovery',
-            email: email
+            email: email,
+            options: {
+                redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/reset-password`
+            }
         });
 
         if (linkError) {
-            console.error('Erreur génération lien:', linkError);
+            console.error('Erreur génération lien après resetPasswordForEmail:', linkError);
             return res.status(500).json({ 
                 error: 'Impossible de générer le lien de réinitialisation',
                 details: linkError.message 
             });
         }
 
-        // Debug: afficher la structure complète de la réponse
-        console.log('Structure linkData complète:', JSON.stringify(linkData, null, 2));
-
-        const originalLink = linkData.properties?.action_link;
-        if (!originalLink) {
-            console.error('Pas de action_link trouvé dans:', linkData);
+        const resetLink = linkData.properties?.action_link;
+        if (!resetLink) {
             return res.status(500).json({ 
-                error: 'Lien de réinitialisation non généré',
-                debug: linkData
+                error: 'Lien de réinitialisation non généré' 
             });
         }
 
-        console.log('Lien original Supabase:', originalLink);
-
-        // Extraire les paramètres du lien Supabase et construire notre propre URL
-        const url = new URL(originalLink);
-        const accessToken = url.searchParams.get('access_token');
-        const refreshToken = url.searchParams.get('refresh_token');
-        const type = url.searchParams.get('type');
-
-        console.log('Tokens extraits:', {
-            accessToken: accessToken ? 'présent' : 'manquant',
-            refreshToken: refreshToken ? 'présent' : 'manquant',
-            type: type || 'manquant'
-        });
-
-        if (!accessToken || !refreshToken) {
-            // Essayer une approche alternative : utiliser directement le lien Supabase
-            console.log('Tokens manquants, utilisation du lien Supabase direct');
-            const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-            
-            // Modifier l'URL pour pointer vers notre page de reset
-            const modifiedUrl = new URL(originalLink);
-            modifiedUrl.hostname = new URL(baseUrl).hostname;
-            modifiedUrl.pathname = '/reset-password';
-            
-            const resetLink = modifiedUrl.toString();
-            console.log('Lien modifié:', resetLink);
-            
-            // Envoyer l'email avec le lien modifié
-            await sendEmailWithBrevo(email, resetLink);
-            
-            return res.status(200).json({
-                message: 'Email de réinitialisation envoyé avec succès',
-                method: 'brevo-direct'
-            });
-        }
-
-        // Construire le lien de reset avec notre domaine et nos paramètres
-        const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
-        const resetLink = `${baseUrl}/reset-password?access_token=${accessToken}&refresh_token=${refreshToken}&type=${type}`;
-        
-        console.log('Lien de reset construit:', resetLink.substring(0, 100) + '...');
-
-        console.log('Lien généré, envoi de l\'email via Brevo...');
-        
-        // Envoyer l'email via Brevo
+        console.log('Envoi de l\'email via Brevo...');
         await sendEmailWithBrevo(email, resetLink);
 
         console.log('Email de reset envoyé avec succès via Brevo pour:', email);
         return res.status(200).json({
             message: 'Email de réinitialisation envoyé avec succès',
-            method: 'brevo-custom'
+            method: 'brevo-standard'
         });
 
     } catch (err) {

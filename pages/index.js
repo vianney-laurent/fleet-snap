@@ -69,18 +69,38 @@ export default function LoginPage() {
     setForgotError('');
     setForgotSuccess('');
 
+    if (!forgotEmail) {
+      setForgotError('Veuillez saisir votre email.');
+      return;
+    }
+
     logger.info('Demande de réinitialisation mot de passe', { email: forgotEmail });
 
-    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
-      redirectTo: `${window.location.origin}/reset-password`
-    });
+    try {
+      const response = await fetch('/api/resetPasswordWithBrevo', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: forgotEmail }),
+      });
 
-    if (error) {
-      logger.error('Erreur réinitialisation mot de passe', error, { email: forgotEmail });
-      setForgotError(`Erreur : ${error.message}`);
-    } else {
-      logger.info('Email de réinitialisation envoyé', { email: forgotEmail });
-      setForgotSuccess('Un email de réinitialisation de mot de passe vous a été envoyé.');
+      const data = await response.json();
+
+      if (response.ok) {
+        logger.info('Email de réinitialisation envoyé', { email: forgotEmail });
+        setForgotSuccess('Un email de réinitialisation de mot de passe vous a été envoyé.');
+        setForgotEmail('');
+      } else {
+        logger.error('Erreur réinitialisation mot de passe', null, { 
+          email: forgotEmail, 
+          error: data.error 
+        });
+        setForgotError(`Erreur : ${data.error || 'Impossible d\'envoyer l\'email'}`);
+      }
+    } catch (error) {
+      logger.error('Erreur réseau réinitialisation mot de passe', error, { email: forgotEmail });
+      setForgotError('Erreur de connexion. Veuillez réessayer.');
     }
   };
 
